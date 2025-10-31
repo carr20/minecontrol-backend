@@ -3,6 +3,7 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import connection from "../config/db.js";
+import fetch from "node-fetch";
 
 const router = express.Router();
 
@@ -49,13 +50,17 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
 /* =======================================================
    🔹 ENCABEZADO CON LOGO IZQUIERDO Y TÍTULOS CENTRADOS
 ======================================================= */
-function addHeader(doc, title, filtro = {}) {
-  const logoURL = "https://i.imgur.com/Y9TvSXs.png"; // tu link directo
-doc.image(logoURL, 50, 30, { width: 80 });
+async function addHeader(doc, title, filtro = {}) {
+  const logoURL = "https://i.imgur.com/Y9TvSXs.png"; // logo en línea (Imgur)
 
-  // Logo alineado a la izquierda, más grande
-  if (fs.existsSync(logoPath)) {
-    doc.image(logoPath, 40, 25, { width: 80 });
+  // 🔹 Intentar cargar el logo desde la URL (funciona en Render)
+  try {
+    const response = await fetch(logoURL);
+    const arrayBuffer = await response.arrayBuffer();
+    const logoBuffer = Buffer.from(arrayBuffer);
+    doc.image(logoBuffer, 50, 30, { width: 80 });
+  } catch (error) {
+    console.error("⚠️ No se pudo cargar el logo remoto:", error.message);
   }
 
   // Títulos centrados
