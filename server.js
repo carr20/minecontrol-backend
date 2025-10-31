@@ -22,6 +22,19 @@ app.use("/api", routes);
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;
+
+// Ruta de prueba para verificar que el servidor está en línea
+app.get("/", (req, res) => {
+  res.send("🚀 Servidor de NetLink Perú funcionando correctamente");
+});
+
+app.get("/api/test", (req, res) => {
+  res.json({
+    message: "✅ Servidor de NetLink Perú funcionando correctamente 🚀",
+    fecha: new Date().toLocaleString("es-PE")
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
