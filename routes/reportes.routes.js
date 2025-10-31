@@ -50,7 +50,8 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
    🔹 ENCABEZADO CON LOGO IZQUIERDO Y TÍTULOS CENTRADOS
 ======================================================= */
 function addHeader(doc, title, filtro = {}) {
-  const logoPath = "./uploads/logo.png";
+  const logoPath = path.resolve("uploads", "logo.png");
+
 
   // Logo alineado a la izquierda, más grande
   if (fs.existsSync(logoPath)) {
