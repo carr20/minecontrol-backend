@@ -35,6 +35,25 @@ app.get("/api/test", (req, res) => {
   });
 });
 
+import connection from "./config/db.js";
+
+// Ruta de prueba para verificar conexión a la base de datos
+app.get("/api/db-test", async (req, res) => {
+  try {
+    const [rows] = await connection.query("SELECT NOW() AS fecha_actual");
+    res.json({
+      message: "✅ Conexión exitosa con la base de datos de Clever Cloud",
+      fecha_servidor: rows[0].fecha_actual,
+    });
+  } catch (error) {
+    console.error("❌ Error al probar conexión:", error.message);
+    res.status(500).json({
+      error: "Error al conectar con la base de datos",
+      detalle: error.message,
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
