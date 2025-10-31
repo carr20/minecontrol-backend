@@ -50,7 +50,9 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
    🔹 ENCABEZADO CON LOGO IZQUIERDO Y TÍTULOS CENTRADOS
 ======================================================= */
 function addHeader(doc, title, filtro = {}) {
-  const logoPath = path.resolve("uploads", "logo.png");
+  const logoURL = "https://imgur.com/a/cCmIs1m"; // tu link directo
+    doc.image(logoURL, 50, 30, { width: 80 });
+
 
 
   // Logo alineado a la izquierda, más grande
