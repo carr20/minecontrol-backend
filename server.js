@@ -10,34 +10,30 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use("/api/reportes", reportesRoutes);
 
-// Test de conexión a la base
+// 🔹 Rutas de tu aplicación
+app.use("/api/reportes", reportesRoutes);
+app.use("/api", routes);
+
+// 🔹 Verificación inicial de conexión a la base de datos
 connection.query("SELECT 1")
   .then(() => console.log("✅ Conectado a la base de datos"))
   .catch(err => console.error("❌ Error al conectar a la base de datos:", err.message));
 
-// Rutas principales
-app.use("/api", routes);
-
-// Iniciar servidor
-const PORT = process.env.PORT || 3000;
-
-// Ruta de prueba para verificar que el servidor está en línea
+// 🔹 Ruta principal
 app.get("/", (req, res) => {
   res.send("🚀 Servidor de NetLink Perú funcionando correctamente");
 });
 
+// 🔹 Ruta de prueba del servidor
 app.get("/api/test", (req, res) => {
   res.json({
     message: "✅ Servidor de NetLink Perú funcionando correctamente 🚀",
-    fecha: new Date().toLocaleString("es-PE")
+    fecha: new Date().toLocaleString("es-PE"),
   });
 });
 
-import connection from "./config/db.js";
-
-// Ruta de prueba para verificar conexión a la base de datos
+// 🔹 Ruta de prueba de conexión a la base de datos
 app.get("/api/db-test", async (req, res) => {
   try {
     const [rows] = await connection.query("SELECT NOW() AS fecha_actual");
@@ -54,6 +50,7 @@ app.get("/api/db-test", async (req, res) => {
   }
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
