@@ -82,7 +82,7 @@ async function addHeader(doc, title, filtro = {}) {
   if (filtro.desde || filtro.hasta) {
     doc.moveDown(0.8); // más espacio antes del rango
     doc.font("Helvetica")
-      .fontSize(8)
+      .fontSize(9)
       .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
   }
 
@@ -91,25 +91,39 @@ async function addHeader(doc, title, filtro = {}) {
 }
 
 /* =======================================================
-   🔻 PIE DE PÁGINA CON LÍNEA Y NUMERACIÓN
+   🔻 PIE DE PÁGINA CORREGIDO (sin páginas en blanco)
 ======================================================= */
 function addFooter(doc) {
-  const pageCount = doc.bufferedPageRange().count;
-  for (let i = 0; i < pageCount; i++) {
-    doc.switchToPage(i);
+  try {
+    const pageCount = doc.bufferedPageRange().count;
 
-    const y = doc.page.height - 45;
-    doc.strokeColor("#cccccc")
-      .moveTo(40, y)
-      .lineTo(doc.page.width - 40, y)
-      .stroke();
+    for (let i = 0; i < pageCount; i++) {
+      doc.switchToPage(i);
 
-    doc.fontSize(9).fillColor("gray")
-      .text(`Generado automáticamente - Página ${i + 1} de ${pageCount}`,
-        0, doc.page.height - 35,
-        { align: "center", width: doc.page.width });
+      // Evitar crear nueva página accidentalmente
+      const y = doc.page.height - 45;
+
+      // Línea separadora gris
+      doc.strokeColor("#cccccc")
+        .moveTo(40, y)
+        .lineTo(doc.page.width - 40, y)
+        .stroke();
+
+      // Texto inferior centrado o a la derecha
+      doc.fontSize(8)
+        .fillColor("gray")
+        .text(
+          `Generado automáticamente - Página ${i + 1} de ${pageCount}`,
+          40,
+          doc.page.height - 35,
+          { align: "right" }
+        );
+    }
+  } catch (error) {
+    console.error("⚠️ Error al agregar pie de página:", error.message);
   }
 }
+
 
 /* =======================================================
    ✅ 1) REPORTE: TRABAJADORES
