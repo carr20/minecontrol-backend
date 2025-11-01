@@ -308,134 +308,108 @@ doc.end();
 });
 
 /* =======================================================
-   ✅ 5) REPORTE: ESTADÍSTICAS DE OPERACIONES
+   ✅ 5) REPORTE: ESTADÍSTICAS DE OPERACIONES (CON GRÁFICO)
 ======================================================= */
 router.get("/estadisticas", async (req, res) => {
   try {
     const { desde, hasta } = req.query;
 
-    // --- Filtros de fechas dinámicos ---
-    const whereAsis = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
-    const whereReg = desde && hasta ? `WHERE rm.fecha BETWEEN ? AND ?` : "";
+    const where = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
     const params = desde && hasta ? [desde, hasta] : [];
 
-    // --- 1️⃣ Total de días trabajados ---
+    // Total de días trabajados
     const [[dias]] = await connection.query(
-      `SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${whereAsis}`,
+      `SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${where}`,
       params
     );
 
-    // --- 2️⃣ Desglose diario de actividad ---
-    const [desgloseAsist] = await connection.query(
-      `SELECT a.fecha, COUNT(DISTINCT a.id_trabajador) AS trabajadores_presentes
-       FROM asistencias a
-       ${whereAsis}
-       GROUP BY a.fecha
-       ORDER BY a.fecha ASC`,
-      params
-    );
-
-    const [desgloseMaq] = await connection.query(
-      `SELECT rm.fecha, COUNT(DISTINCT rm.id_maquinaria) AS maquinarias_activas
-       FROM registro_maquinaria rm
-       ${whereReg}
-       GROUP BY rm.fecha
-       ORDER BY rm.fecha ASC`,
-      params
-    );
-
-    // --- Combinar desglose por fecha ---
-    const mapa = new Map();
-    desgloseAsist.forEach(r => {
-      mapa.set(r.fecha.toISOString().split("T")[0], {
-        fecha: r.fecha.toISOString().split("T")[0],
-        trabajadores_presentes: r.trabajadores_presentes,
-        maquinarias_activas: 0
-      });
-    });
-    desgloseMaq.forEach(r => {
-      const key = r.fecha.toISOString().split("T")[0];
-      if (!mapa.has(key)) {
-        mapa.set(key, { fecha: key, trabajadores_presentes: 0, maquinarias_activas: r.maquinarias_activas });
-      } else {
-        mapa.get(key).maquinarias_activas = r.maquinarias_activas;
-      }
-    });
-    const desglose = Array.from(mapa.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
-
-    // --- 3️⃣ Totales por tipo de trabajo ---
+    // Desglose de materiales (toneladas movidas)
     const [materiales] = await connection.query(
-      `SELECT COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
-              ROUND(SUM(COALESCE(rm.toneladas_movidas, 0)), 2) AS total_toneladas
+      `SELECT 
+          COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
+          ROUND(SUM(COALESCE(rm.toneladas_movidas, 0)), 2) AS total_toneladas
        FROM registro_maquinaria rm
-       ${whereReg}
+       ${where.replace("a.fecha", "rm.fecha")}
        GROUP BY rm.tipo_trabajo
        ORDER BY total_toneladas DESC`,
       params
     );
 
-    // --- Verificar datos ---
-    if (!desglose.length && (!materiales || materiales.length === 0) && dias.dias_trabajados === 0) {
-      return res.status(404).json({ error: "No hay datos en el rango solicitado." });
-    }
-
-    // --- Crear documento PDF ---
+    // Crear PDF
     const doc = new PDFDocument({
       margins: { top: 40, bottom: 20, left: 40, right: 40 },
       size: "A4",
-      layout: "landscape",
-      bufferPages: true
+      layout: "landscape"
     });
+
     res.setHeader("Content-Disposition", "attachment; filename=reporte_estadisticas.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
 
-    // --- Encabezado ---
+    // Encabezado con logo y título
     await addHeader(doc, "RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
 
-    // --- Total de días trabajados ---
-    doc.moveDown(0.5); // 👈 desplazamos el texto debajo del logo
-    doc.font("Helvetica-Bold").fontSize(12).text("Total de días trabajados:", 150, doc.y);
-    doc.font("Helvetica-Bold").fontSize(18).text(String(dias?.dias_trabajados || 0), 350, doc.y - 16);
-    doc.moveDown(1.2);
+    // Total de días trabajados
+    doc.font("Helvetica-Bold").fontSize(12).text("Total de días trabajados:", 40, doc.y);
+    doc.font("Helvetica-Bold").fontSize(18).text(String(dias.dias_trabajados || 0), 230, doc.y - 16);
+    doc.moveDown(1.5);
 
-    // --- Tabla A: Desglose diario ---
-    doc.font("Helvetica-Bold").fontSize(12).text("A) Desglose diario de actividad", 40, doc.y);
+    // Tabla de tonelaje por tipo de trabajo
+    doc.font("Helvetica-Bold").fontSize(12).text("Totales por tipo de trabajo (toneladas)", 40, doc.y);
     doc.moveDown(0.5);
 
-    const headersA = ["Nº", "Fecha", "Trabajadores presentes", "Maquinarias activas"];
-    const rowsA = desglose.map(d => [
-      d.fecha,
-      d.trabajadores_presentes,
-      d.maquinarias_activas
-    ]);
-    const widthsA = [30, 120, 180, 180];
-    drawTable(doc, headersA, rowsA, doc.y + 10, 20, widthsA, 842);
-
-    doc.moveDown(1);
-
-    // --- Tabla B: Totales por tipo de trabajo ---
-    doc.font("Helvetica-Bold").fontSize(12).text("B) Totales por tipo de trabajo (toneladas)", 40, doc.y);
-    doc.moveDown(0.5);
-
-    const headersB = ["Nº", "Tipo de trabajo", "Toneladas totales"];
-    const rowsB = materiales.map(m => [
+    const headers = ["Nº", "Tipo de trabajo", "Toneladas totales"];
+    const rows = materiales.map(m => [
       m.tipo_trabajo,
       (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
     ]);
-    const widthsB = [30, 300, 180];
-    drawTable(doc, headersB, rowsB, doc.y + 10, 20, widthsB, 842);
+    const widths = [30, 300, 180];
+    drawTable(doc, headers, rows, 120, 20, widths);
 
-    // --- Pie de página ---
+    /* =======================================================
+       🔹 GENERAR GRÁFICO DE TONELADAS
+    ======================================================== */
+    if (materiales.length > 0) {
+      const chartURL = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
+        type: "bar",
+        data: {
+          labels: materiales.map(m => m.tipo_trabajo),
+          datasets: [{
+            label: "Toneladas movidas",
+            data: materiales.map(m => m.total_toneladas),
+            backgroundColor: "rgba(54, 162, 235, 0.7)"
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: "Toneladas por tipo de trabajo" } },
+          scales: { y: { beginAtZero: true } }
+        }
+      }))}`;
+
+      try {
+        const chartResponse = await fetch(chartURL);
+        const chartBuffer = Buffer.from(await chartResponse.arrayBuffer());
+
+        // Nueva página para el gráfico
+        doc.addPage();
+        doc.font("Helvetica-Bold").fontSize(14).text("Gráfico de tonelaje por tipo de trabajo", 40, 60);
+        doc.image(chartBuffer, 60, 100, { width: 680 });
+      } catch (err) {
+        console.error("⚠️ No se pudo generar el gráfico:", err.message);
+      }
+    }
+
+    // Pie de página
     addFooter(doc);
     doc.flushPages();
     doc.end();
 
   } catch (error) {
-    console.error("❌ Error al generar reporte de estadísticas:", error);
+    console.error("Error al generar reporte de estadísticas:", error);
     res.status(500).json({ error: "Error al generar el reporte de estadísticas" });
   }
 });
+
 
 
 /* =======================================================
