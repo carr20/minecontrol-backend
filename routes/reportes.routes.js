@@ -527,8 +527,10 @@ router.get("/todos", async (req, res) => {
     /* =======================================================
        SECCIÓN 3: MAQUINARIAS
     ======================================================== */
-    doc.addPage();
-    await addHeader(doc, "3) LISTA DE MAQUINARIAS");
+    // Sección 3 en horizontal
+      doc.addPage({ size: "A4", layout: "landscape" });
+      await addHeader(doc, "3) LISTA DE MAQUINARIAS");
+
     const [maquinarias] = await connection.query(
       `SELECT codigo, nombre, tipo, marca, modelo, placa, estado
        FROM maquinarias
@@ -545,7 +547,8 @@ router.get("/todos", async (req, res) => {
     /* =======================================================
        SECCIÓN 4: REGISTRO DE MAQUINARIAS
     ======================================================== */
-    doc.addPage();
+    // Sección 4 en horizontal
+    doc.addPage({ size: "A4", layout: "landscape" });
     await addHeader(doc, "4) REGISTRO DE MAQUINARIAS", { desde, hasta });
     const [registroMaq] = await connection.query(
       `SELECT m.nombre AS maquinaria,
@@ -571,7 +574,8 @@ router.get("/todos", async (req, res) => {
     /* =======================================================
        SECCIÓN 5: ESTADÍSTICAS
     ======================================================== */
-    doc.addPage();
+    // Volver al formato vertical
+    doc.addPage({ size: "A4", layout: "portrait" });
     await addHeader(doc, "5) RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
     const [materiales] = await connection.query(
       `SELECT COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
