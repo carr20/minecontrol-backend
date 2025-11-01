@@ -82,7 +82,7 @@ async function addHeader(doc, title, filtro = {}) {
   }
 
   // 🔹 Reducir espacio entre encabezado y tabla (evita salto de página)
-  doc.moveDown(0.8);
+  doc.moveDown(0.3);
 }
 /* =======================================================
    🔻 PIE DE PÁGINA CON LÍNEA Y NUMERACIÓN
@@ -91,14 +91,14 @@ function addFooter(doc) {
   const pageCount = doc.bufferedPageRange().count;
   for (let i = 0; i < pageCount; i++) {
     doc.switchToPage(i);
-    const y = doc.page.height - 45;
-
+    const y = doc.page.height - 40;
     doc.strokeColor("#cccccc").moveTo(40, y).lineTo(doc.page.width - 40, y).stroke();
     doc.fontSize(8).fillColor("gray")
       .text(`Generado automáticamente - Página ${i + 1} de ${pageCount}`,
-        40, doc.page.height - 35, { align: "right", oblique: true });
+        0, doc.page.height - 30, { align: "center" });
   }
 }
+
 
 /* =======================================================
    ✅ 1) REPORTE: TRABAJADORES
@@ -119,7 +119,7 @@ router.get("/trabajadores", async (req, res) => {
     const tableData = rows.map(t => [t.nombres, t.apellidos, t.dni, t.cargo || "-"]);
     const columnWidths = [30, 120, 120, 100, 150];
 
-    drawTable(doc, headers, tableData, 140, 20, columnWidths);
+    drawTable(doc, headers, tableData, 120, 20, columnWidths);
     addFooter(doc);
     doc.end();
   } catch (error) {
@@ -164,7 +164,7 @@ router.get("/asistencias", async (req, res) => {
     ]);
     const columnWidths = [30, 90, 90, 70, 60, 60, 100];
 
-    drawTable(doc, headers, tableData, 140, 20, columnWidths);
+    drawTable(doc, headers, tableData, 120, 20, columnWidths);
     addFooter(doc);
     doc.end();
   } catch (error) {
@@ -198,7 +198,7 @@ router.get("/maquinarias", async (req, res) => {
     ]);
     const columnWidths = [30, 70, 150, 100, 100, 100, 100, 80];
 
-    drawTable(doc, headers, tableData, 140, 20, columnWidths, 842);
+    drawTable(doc, headers, tableData, 120, 20, columnWidths, 842);
     addFooter(doc);
     doc.end();
   } catch (error) {
@@ -248,7 +248,7 @@ router.get("/maquinarias/registro", async (req, res) => {
     ]);
     const columnWidths = [30, 110, 120, 70, 60, 60, 110, 130];
 
-    drawTable(doc, headers, tableData, 140, 20, columnWidths, 842);
+    drawTable(doc, headers, tableData, 120, 20, columnWidths, 842);
     addFooter(doc);
     doc.end();
   } catch (error) {
