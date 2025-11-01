@@ -308,66 +308,7 @@ doc.end();
 });
 
 /* =======================================================
-   ✅ 5) REPORTE: ESTADÍSTICAS DE OPERACIONES (CON GRÁFICO)
-======================================================= */
-router.get("/estadisticas", async (req, res) => {
-  try {
-    const { desde, hasta } = req.query;
-
-    const where = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
-    const params = desde && hasta ? [desde, hasta] : [];
-
-    // Total de días trabajados
-    const [[dias]] = await connection.query(
-      `SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${where}`,
-      params
-    );
-
-    // Desglose de materiales (toneladas movidas)
-    const [materiales] = await connection.query(
-      `SELECT 
-          COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
-          ROUND(SUM(COALESCE(rm.toneladas_movidas, 0)), 2) AS total_toneladas
-       FROM registro_maquinaria rm
-       ${where.replace("a.fecha", "rm.fecha")}
-       GROUP BY rm.tipo_trabajo
-       ORDER BY total_toneladas DESC`,
-      params
-    );
-
-    // Crear PDF
-    const doc = new PDFDocument({
-      margins: { top: 40, bottom: 20, left: 40, right: 40 },
-      size: "A4",
-      layout: "landscape"
-    });
-
-    res.setHeader("Content-Disposition", "attachment; filename=reporte_estadisticas.pdf");
-    res.setHeader("Content-Type", "application/pdf");
-    doc.pipe(res);
-
-    // Encabezado con logo y título
-    await addHeader(doc, "RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
-
-    // Total de días trabajados
-    doc.font("Helvetica-Bold").fontSize(12).text("Total de días trabajados:", 40, doc.y);
-    doc.font("Helvetica-Bold").fontSize(18).text(String(dias.dias_trabajados || 0), 230, doc.y - 16);
-    doc.moveDown(1.5);
-
-    // Tabla de tonelaje por tipo de trabajo
-doc.font("Helvetica-Bold").fontSize(12).text("Totales por tipo de trabajo (toneladas)", 40, doc.y);
-doc.moveDown(0.5);
-
-const headers = ["Nº", "Tipo de trabajo", "Toneladas totales"];
-const rows = materiales.map(m => [
-  m.tipo_trabajo,
-  (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
-]);
-const widths = [30, 300, 180];
-drawTable(doc, headers, rows, 120, 20, widths);
-
-/* =======================================================
-   🔹 GRÁFICO DE TONELADAS (QuickChart)
+   🔹 GRÁFICO DE TONELADAS (QuickChart) — versión segura
 ======================================================= */
 if (materiales.length > 0) {
   const chartURL = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
@@ -381,33 +322,39 @@ if (materiales.length > 0) {
       }]
     },
     options: {
-      plugins: { title: { display: true, text: "Toneladas por tipo de trabajo" } },
-      scales: { y: { beginAtZero: true } }
+      plugins: {
+        title: { display: true, text: "Toneladas por tipo de trabajo" },
+        legend: { display: false }
+      },
+      scales: {
+        x: { ticks: { color: "#000" } },
+        y: { beginAtZero: true, ticks: { color: "#000" } }
+      }
     }
   }))}`;
 
   try {
-    const chartResponse = await fetch(chartURL);
-    const chartBuffer = Buffer.from(await chartResponse.arrayBuffer());
+    const response = await fetch(chartURL);
+    if (!response.ok) throw new Error("No se pudo obtener el gráfico remoto");
+
+    const chartArrayBuffer = await response.arrayBuffer();
+    const chartBuffer = Buffer.from(chartArrayBuffer);
+
+    // Nueva página para el gráfico
     doc.addPage();
     doc.font("Helvetica-Bold").fontSize(14).text("Gráfico de tonelaje por tipo de trabajo", 40, 60);
     doc.image(chartBuffer, 60, 100, { width: 680 });
+
   } catch (err) {
     console.error("⚠️ No se pudo generar el gráfico:", err.message);
+
+    // Si falla el gráfico, mostrar aviso en el PDF
+    doc.addPage();
+    doc.font("Helvetica-Bold").fontSize(14).fillColor("red")
+       .text("⚠️ No se pudo generar el gráfico estadístico.", 40, 100);
+    doc.fillColor("black");
   }
 }
-
-
-    // Pie de página
-    addFooter(doc);
-    doc.flushPages();
-    doc.end();
-
-  } catch (error) {
-    console.error("Error al generar reporte de estadísticas:", error);
-    res.status(500).json({ error: "Error al generar el reporte de estadísticas" });
-  }
-});
 
 
 
