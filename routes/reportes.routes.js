@@ -308,6 +308,65 @@ doc.end();
 });
 
 /* =======================================================
+   ✅ 5) REPORTE: ESTADÍSTICAS DE OPERACIONES (CON GRÁFICO)
+======================================================= */
+router.get("/estadisticas", async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+
+    const where = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
+    const params = desde && hasta ? [desde, hasta] : [];
+
+    // Total de días trabajados
+    const [[dias]] = await connection.query(
+      `SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${where}`,
+      params
+    );
+
+    // Desglose de materiales (toneladas movidas)
+    const [materiales] = await connection.query(
+      `SELECT 
+          COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
+          ROUND(SUM(COALESCE(rm.toneladas_movidas, 0)), 2) AS total_toneladas
+       FROM registro_maquinaria rm
+       ${where.replace("a.fecha", "rm.fecha")}
+       GROUP BY rm.tipo_trabajo
+       ORDER BY total_toneladas DESC`,
+      params
+    );
+
+    // Crear PDF
+    const doc = new PDFDocument({
+      margins: { top: 40, bottom: 20, left: 40, right: 40 },
+      size: "A4",
+      layout: "landscape"
+    });
+
+    res.setHeader("Content-Disposition", "attachment; filename=reporte_estadisticas.pdf");
+    res.setHeader("Content-Type", "application/pdf");
+    doc.pipe(res);
+
+    // Encabezado con logo y título
+    await addHeader(doc, "RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
+
+    // Total de días trabajados
+    doc.font("Helvetica-Bold").fontSize(12).text("Total de días trabajados:", 40, doc.y);
+    doc.font("Helvetica-Bold").fontSize(18).text(String(dias.dias_trabajados || 0), 230, doc.y - 16);
+    doc.moveDown(1.5);
+
+    // Tabla de tonelaje por tipo de trabajo
+doc.font("Helvetica-Bold").fontSize(12).text("Totales por tipo de trabajo (toneladas)", 40, doc.y);
+doc.moveDown(0.5);
+
+const headers = ["Nº", "Tipo de trabajo", "Toneladas totales"];
+const rows = materiales.map(m => [
+  m.tipo_trabajo,
+  (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
+]);
+const widths = [30, 300, 180];
+drawTable(doc, headers, rows, 120, 20, widths);
+
+/* =======================================================
    🔹 GRÁFICO DE TONELADAS (QuickChart) — versión segura
 ======================================================= */
 if (materiales.length > 0) {
@@ -355,6 +414,7 @@ if (materiales.length > 0) {
     doc.fillColor("black");
   }
 }
+
 
 
 
