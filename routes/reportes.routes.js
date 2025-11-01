@@ -62,6 +62,12 @@ async function addHeader(doc, title, filtro = {}) {
     console.error("⚠️ No se pudo cargar el logo:", error.message);
   }
 
+  // 🔹 Título principal de color azul (similar al logo)
+  doc.fillColor("#004b87") // azul corporativo
+     .font("Helvetica-Bold")
+     .fontSize(18)
+     .text("NETLINK PERÚ", 0, 35, { align: "center" });
+
   // 🔹 Alinear el texto al centro del documento (sin desplazarse por el logo)
   const pageWidth = doc.page.width;
   const centerX = pageWidth / 2;
