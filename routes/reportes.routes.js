@@ -445,8 +445,8 @@ router.get("/todos", async (req, res) => {
   try {
     const { desde, hasta } = req.query;
 
-    const whereFechaA = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
-    const whereFechaRM = desde && hasta ? `WHERE rm.fecha BETWEEN ? AND ?` : "";
+    const whereA = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
+    const whereRM = desde && hasta ? `WHERE rm.fecha BETWEEN ? AND ?` : "";
     const params = desde && hasta ? [desde, hasta] : [];
 
     const doc = new PDFDocument({
@@ -460,69 +460,77 @@ router.get("/todos", async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
 
-    // 🔹 Encabezado principal
+    /* =======================================================
+       PORTADA
+    ======================================================== */
     await addHeader(doc, "REPORTE GENERAL DE OPERACIONES", { desde, hasta });
+    doc.moveDown(4);
+    doc.font("Helvetica").fontSize(12).text("Informe consolidado generado por NetLink Perú", { align: "center" });
+    doc.moveDown(2);
+    doc.font("Helvetica").fontSize(10).text(
+      `Fecha de generación: ${new Date().toLocaleString("es-PE")}`,
+      { align: "center" }
+    );
 
     /* =======================================================
        SECCIÓN 1: TRABAJADORES
     ======================================================== */
     doc.addPage();
-    await addHeader(doc, "1️⃣ LISTA DE TRABAJADORES");
+    await addHeader(doc, "1) LISTA DE TRABAJADORES");
     const [trabajadores] = await connection.query(
       `SELECT nombres, apellidos, dni, cargo FROM trabajadores ORDER BY apellidos ASC`
     );
     if (trabajadores.length) {
-      const headers = ["Nº", "Nombres", "Apellidos", "DNI", "Cargo"];
+      const headers = ["N°", "Nombres", "Apellidos", "DNI", "Cargo"];
       const rows = trabajadores.map(t => [t.nombres, t.apellidos, t.dni, t.cargo || "-"]);
-      const widths = [30, 120, 120, 100, 150];
-      drawTable(doc, headers, rows, 140, 20, widths);
+      drawTable(doc, headers, rows, 140, 20, [30, 120, 120, 100, 150]);
     }
 
     /* =======================================================
        SECCIÓN 2: ASISTENCIAS
     ======================================================== */
     doc.addPage();
-    await addHeader(doc, "2️⃣ REPORTE DE ASISTENCIAS", { desde, hasta });
+    await addHeader(doc, "2) REPORTE DE ASISTENCIAS", { desde, hasta });
     const [asistencias] = await connection.query(
       `SELECT t.nombres, t.apellidos, a.fecha, a.hora_entrada, a.hora_salida, a.observaciones
        FROM asistencias a
        JOIN trabajadores t ON a.id_trabajador = t.id
-       ${whereFechaA}
+       ${whereA}
        ORDER BY a.fecha ASC`, params
     );
     if (asistencias.length) {
-      const headers = ["Nº", "Nombres", "Apellidos", "Fecha", "Entrada", "Salida", "Observaciones"];
+      const headers = ["N°", "Nombres", "Apellidos", "Fecha", "Entrada", "Salida", "Observaciones"];
       const rows = asistencias.map(a => [
         a.nombres, a.apellidos,
         a.fecha ? new Date(a.fecha).toISOString().split("T")[0] : "-",
         a.hora_entrada || "-", a.hora_salida || "-", a.observaciones || "-"
       ]);
-      const widths = [30, 90, 90, 70, 60, 60, 100];
-      drawTable(doc, headers, rows, 140, 20, widths);
+      drawTable(doc, headers, rows, 140, 20, [30, 90, 90, 70, 60, 60, 100]);
     }
 
     /* =======================================================
        SECCIÓN 3: MAQUINARIAS
     ======================================================== */
     doc.addPage();
-    await addHeader(doc, "3️⃣ LISTA DE MAQUINARIAS");
+    await addHeader(doc, "3) LISTA DE MAQUINARIAS");
     const [maquinarias] = await connection.query(
-      `SELECT codigo, nombre, tipo, marca, modelo, placa, estado FROM maquinarias ORDER BY estado DESC, nombre ASC`
+      `SELECT codigo, nombre, tipo, marca, modelo, placa, estado
+       FROM maquinarias
+       ORDER BY estado DESC, nombre ASC`
     );
     if (maquinarias.length) {
-      const headers = ["Nº", "Código", "Nombre", "Tipo", "Marca", "Modelo", "Placa", "Estado"];
+      const headers = ["N°", "Código", "Nombre", "Tipo", "Marca", "Modelo", "Placa", "Estado"];
       const rows = maquinarias.map(m => [
         m.codigo, m.nombre, m.tipo, m.marca, m.modelo, m.placa, m.estado
       ]);
-      const widths = [30, 70, 150, 100, 100, 100, 100, 80];
-      drawTable(doc, headers, rows, 140, 20, widths);
+      drawTable(doc, headers, rows, 140, 20, [30, 70, 150, 100, 100, 100, 100, 80]);
     }
 
     /* =======================================================
        SECCIÓN 4: REGISTRO DE MAQUINARIAS
     ======================================================== */
     doc.addPage();
-    await addHeader(doc, "4️⃣ REGISTRO DE MAQUINARIAS", { desde, hasta });
+    await addHeader(doc, "4) REGISTRO DE MAQUINARIAS", { desde, hasta });
     const [registroMaq] = await connection.query(
       `SELECT m.nombre AS maquinaria,
               CONCAT(t.nombres, ' ', t.apellidos) AS trabajador,
@@ -530,46 +538,43 @@ router.get("/todos", async (req, res) => {
        FROM registro_maquinaria rm
        JOIN maquinarias m ON rm.id_maquinaria = m.id
        JOIN trabajadores t ON rm.id_trabajador = t.id
-       ${whereFechaRM}
+       ${whereRM}
        ORDER BY rm.fecha ASC`, params
     );
     if (registroMaq.length) {
-      const headers = ["Nº", "Maquinaria", "Trabajador", "Fecha", "Entrada", "Salida", "Tipo trabajo", "Observaciones"];
+      const headers = ["N°", "Maquinaria", "Trabajador", "Fecha", "Entrada", "Salida", "Tipo trabajo", "Observaciones"];
       const rows = registroMaq.map(r => [
         r.maquinaria, r.trabajador,
         r.fecha ? new Date(r.fecha).toISOString().split("T")[0] : "-",
         r.hora_entrada || "-", r.hora_salida || "-",
         r.tipo_trabajo || "-", r.observaciones || "-"
       ]);
-      const widths = [30, 110, 120, 70, 60, 60, 110, 130];
-      drawTable(doc, headers, rows, 140, 20, widths);
+      drawTable(doc, headers, rows, 140, 20, [30, 110, 120, 70, 60, 60, 110, 130]);
     }
 
     /* =======================================================
        SECCIÓN 5: ESTADÍSTICAS
     ======================================================== */
     doc.addPage();
-    await addHeader(doc, "5️⃣ RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
-
-    // Totales por tipo de trabajo
+    await addHeader(doc, "5) RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
     const [materiales] = await connection.query(
       `SELECT COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
               ROUND(SUM(COALESCE(rm.toneladas_movidas, 0)), 2) AS total_toneladas
        FROM registro_maquinaria rm
-       ${whereFechaRM}
+       ${whereRM}
        GROUP BY rm.tipo_trabajo
        ORDER BY total_toneladas DESC`,
       params
     );
-    const headersE = ["Nº", "Tipo de trabajo", "Toneladas totales"];
-    const rowsE = materiales.map(m => [
-      m.tipo_trabajo,
-      (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
-    ]);
-    const widthsE = [30, 300, 180];
-    drawTable(doc, headersE, rowsE, 140, 20, widthsE);
+    if (materiales.length) {
+      const headers = ["N°", "Tipo de trabajo", "Toneladas totales"];
+      const rows = materiales.map(m => [
+        m.tipo_trabajo,
+        (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
+      ]);
+      drawTable(doc, headers, rows, 140, 20, [30, 300, 180]);
+    }
 
-    // Pie final
     addFooter(doc);
     doc.flushPages();
     doc.end();
@@ -579,5 +584,6 @@ router.get("/todos", async (req, res) => {
     res.status(500).json({ error: "Error al generar el reporte general" });
   }
 });
+
 
 export default router;
