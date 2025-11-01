@@ -438,4 +438,151 @@ router.get("/estadisticas", async (req, res) => {
   }
 });
 
+/* =======================================================
+   ✅ 6) REPORTE GENERAL - TODOS LOS REPORTES EN UN SOLO PDF
+======================================================= */
+router.get("/todos", async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+
+    const whereA = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
+    const whereRM = desde && hasta ? `WHERE rm.fecha BETWEEN ? AND ?` : "";
+    const params = desde && hasta ? [desde, hasta] : [];
+
+    const doc = new PDFDocument({
+      margin: 40,
+      size: "A4",
+      layout: "portrait",
+      bufferPages: true
+    });
+
+    res.setHeader("Content-Disposition", "attachment; filename=reporte_general.pdf");
+    res.setHeader("Content-Type", "application/pdf");
+    doc.pipe(res);
+
+    /* =======================================================
+       PORTADA
+    ======================================================== */
+    await addHeader(doc, "REPORTE GENERAL DE OPERACIONES", { desde, hasta });
+    doc.moveDown(4);
+    doc.font("Helvetica").fontSize(12).text("Informe consolidado generado por NetLink Perú", { align: "center" });
+    doc.moveDown(2);
+    doc.font("Helvetica").fontSize(10).text(
+      `Fecha de generación: ${new Date().toLocaleString("es-PE")}`,
+      { align: "center" }
+    );
+
+    /* =======================================================
+       SECCIÓN 1: TRABAJADORES
+    ======================================================== */
+    doc.addPage();
+    await addHeader(doc, "1) LISTA DE TRABAJADORES");
+    const [trabajadores] = await connection.query(
+      `SELECT nombres, apellidos, dni, cargo FROM trabajadores ORDER BY apellidos ASC`
+    );
+    if (trabajadores.length) {
+      const headers = ["N°", "Nombres", "Apellidos", "DNI", "Cargo"];
+      const rows = trabajadores.map(t => [t.nombres, t.apellidos, t.dni, t.cargo || "-"]);
+      drawTable(doc, headers, rows, 140, 20, [30, 120, 120, 100, 150]);
+    }
+
+    /* =======================================================
+       SECCIÓN 2: ASISTENCIAS
+    ======================================================== */
+    doc.addPage();
+    await addHeader(doc, "2) REPORTE DE ASISTENCIAS", { desde, hasta });
+    const [asistencias] = await connection.query(
+      `SELECT t.nombres, t.apellidos, a.fecha, a.hora_entrada, a.hora_salida, a.observaciones
+       FROM asistencias a
+       JOIN trabajadores t ON a.id_trabajador = t.id
+       ${whereA}
+       ORDER BY a.fecha ASC`, params
+    );
+    if (asistencias.length) {
+      const headers = ["N°", "Nombres", "Apellidos", "Fecha", "Entrada", "Salida", "Observaciones"];
+      const rows = asistencias.map(a => [
+        a.nombres, a.apellidos,
+        a.fecha ? new Date(a.fecha).toISOString().split("T")[0] : "-",
+        a.hora_entrada || "-", a.hora_salida || "-", a.observaciones || "-"
+      ]);
+      drawTable(doc, headers, rows, 140, 20, [30, 90, 90, 70, 60, 60, 100]);
+    }
+
+    /* =======================================================
+       SECCIÓN 3: MAQUINARIAS
+    ======================================================== */
+    doc.addPage();
+    await addHeader(doc, "3) LISTA DE MAQUINARIAS");
+    const [maquinarias] = await connection.query(
+      `SELECT codigo, nombre, tipo, marca, modelo, placa, estado
+       FROM maquinarias
+       ORDER BY estado DESC, nombre ASC`
+    );
+    if (maquinarias.length) {
+      const headers = ["N°", "Código", "Nombre", "Tipo", "Marca", "Modelo", "Placa", "Estado"];
+      const rows = maquinarias.map(m => [
+        m.codigo, m.nombre, m.tipo, m.marca, m.modelo, m.placa, m.estado
+      ]);
+      drawTable(doc, headers, rows, 140, 20, [30, 70, 150, 100, 100, 100, 100, 80]);
+    }
+
+    /* =======================================================
+       SECCIÓN 4: REGISTRO DE MAQUINARIAS
+    ======================================================== */
+    doc.addPage();
+    await addHeader(doc, "4) REGISTRO DE MAQUINARIAS", { desde, hasta });
+    const [registroMaq] = await connection.query(
+      `SELECT m.nombre AS maquinaria,
+              CONCAT(t.nombres, ' ', t.apellidos) AS trabajador,
+              rm.fecha, rm.hora_entrada, rm.hora_salida, rm.tipo_trabajo, rm.observaciones
+       FROM registro_maquinaria rm
+       JOIN maquinarias m ON rm.id_maquinaria = m.id
+       JOIN trabajadores t ON rm.id_trabajador = t.id
+       ${whereRM}
+       ORDER BY rm.fecha ASC`, params
+    );
+    if (registroMaq.length) {
+      const headers = ["N°", "Maquinaria", "Trabajador", "Fecha", "Entrada", "Salida", "Tipo trabajo", "Observaciones"];
+      const rows = registroMaq.map(r => [
+        r.maquinaria, r.trabajador,
+        r.fecha ? new Date(r.fecha).toISOString().split("T")[0] : "-",
+        r.hora_entrada || "-", r.hora_salida || "-",
+        r.tipo_trabajo || "-", r.observaciones || "-"
+      ]);
+      drawTable(doc, headers, rows, 140, 20, [30, 110, 120, 70, 60, 60, 110, 130]);
+    }
+
+    /* =======================================================
+       SECCIÓN 5: ESTADÍSTICAS
+    ======================================================== */
+    doc.addPage();
+    await addHeader(doc, "5) RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
+    const [materiales] = await connection.query(
+      `SELECT COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
+              ROUND(SUM(COALESCE(rm.toneladas_movidas, 0)), 2) AS total_toneladas
+       FROM registro_maquinaria rm
+       ${whereRM}
+       GROUP BY rm.tipo_trabajo
+       ORDER BY total_toneladas DESC`,
+      params
+    );
+    if (materiales.length) {
+      const headers = ["N°", "Tipo de trabajo", "Toneladas totales"];
+      const rows = materiales.map(m => [
+        m.tipo_trabajo,
+        (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
+      ]);
+      drawTable(doc, headers, rows, 140, 20, [30, 300, 180]);
+    }
+
+    addFooter(doc);
+    doc.flushPages();
+    doc.end();
+
+  } catch (error) {
+    console.error("❌ Error al generar reporte general:", error);
+    res.status(500).json({ error: "Error al generar el reporte general" });
+  }
+});
+
 export default router;
