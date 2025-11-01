@@ -46,12 +46,11 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
 }
 
 /* =======================================================
-   🔹 ENCABEZADO CON LOGO Y TÍTULOS CENTRADOS REALES (AZUL)
+   🔹 ENCABEZADO CON LOGO Y TÍTULOS CENTRADOS (AZUL)
 ======================================================= */
 async function addHeader(doc, title, filtro = {}) {
   const logoURL = "https://minecontrol-backend.onrender.com/logo.png";
 
-  // 🔹 Intentar cargar el logo desde Render
   try {
     const response = await fetch(logoURL);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -62,65 +61,58 @@ async function addHeader(doc, title, filtro = {}) {
     console.error("⚠️ No se pudo cargar el logo:", error.message);
   }
 
-  // 🔹 Alinear el texto al centro del documento
   const pageWidth = doc.page.width;
   const centerX = pageWidth / 2;
 
-  // 🔹 Título principal azul (similar al color del logo)
   doc.fillColor("#004b87")
     .font("Helvetica-Bold")
     .fontSize(22)
     .text("NETLINK PERÚ", centerX - 110, 35, { width: 220, align: "center" });
 
-  // 🔹 Subtítulo negro
   doc.fillColor("black")
     .font("Helvetica-Bold")
     .fontSize(13)
     .text(title, centerX - 160, 70, { width: 320, align: "center" });
 
-  // 🔹 Mostrar rango de fechas si existe
   if (filtro.desde || filtro.hasta) {
-    doc.moveDown(0.8); // más espacio antes del rango
+    doc.moveDown(0.8);
     doc.font("Helvetica")
       .fontSize(9)
       .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
   }
 
-  // 🔹 Espacio antes de la tabla
   doc.moveDown(1.8);
 }
 
 /* =======================================================
-   🔻 PIE DE PÁGINA CORREGIDO (sin páginas en blanco)
+   🔻 PIE DE PÁGINA SEGURO (sin páginas en blanco)
 ======================================================= */
 function addFooter(doc) {
   try {
-    const pageCount = doc.bufferedPageRange().count;
+    const range = doc.bufferedPageRange();
 
-    for (let i = 0; i < pageCount; i++) {
+    for (let i = range.start; i < range.start + range.count; i++) {
       doc.switchToPage(i);
-
-      // Evitar crear nueva página accidentalmente
       const y = doc.page.height - 45;
 
-      // Línea separadora gris
-      doc.strokeColor("#cccccc")
+      doc
+        .save()
+        .strokeColor("#cccccc")
         .moveTo(40, y)
         .lineTo(doc.page.width - 40, y)
-        .stroke();
-
-      // Texto inferior centrado o a la derecha
-      doc.fontSize(8)
+        .stroke()
+        .fontSize(8)
         .fillColor("gray")
         .text(
-          `Generado automáticamente - Página ${i + 1} de ${pageCount}`,
+          `Generado automáticamente - Página ${i - range.start + 1} de ${range.count}`,
           40,
           doc.page.height - 35,
           { align: "right" }
-        );
+        )
+        .restore();
     }
-  } catch (error) {
-    console.error("⚠️ Error al agregar pie de página:", error.message);
+  } catch (err) {
+    console.error("⚠️ Error en addFooter:", err?.message || err);
   }
 }
 
