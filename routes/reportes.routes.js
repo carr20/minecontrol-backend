@@ -314,63 +314,82 @@ router.get("/estadisticas", async (req, res) => {
   try {
     const { desde, hasta } = req.query;
 
-    const where = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
+    // --- Construcción flexible del filtro de fechas ---
+    const whereA = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
+    const whereRM = desde && hasta ? `WHERE rm.fecha BETWEEN ? AND ?` : "";
     const params = desde && hasta ? [desde, hasta] : [];
 
-    // Total de días trabajados
+    // --- 1. Total de días trabajados ---
     const [[dias]] = await connection.query(
-      `SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${where}`,
+      `SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${whereA}`,
       params
     );
 
-    // Desglose de materiales
+    // --- 2. Totales por tipo de trabajo ---
     const [materiales] = await connection.query(
-      `SELECT COALESCE(rm.tipo_trabajo,'Sin especificar') AS tipo_trabajo,
-              ROUND(SUM(COALESCE(rm.toneladas_movidas,0)),2) AS total_toneladas
+      `SELECT COALESCE(rm.tipo_trabajo, 'Sin especificar') AS tipo_trabajo,
+              ROUND(SUM(COALESCE(rm.toneladas_movidas, 0)), 2) AS total_toneladas
        FROM registro_maquinaria rm
-       ${where.replace("a.fecha","rm.fecha")}
+       ${whereRM}
        GROUP BY rm.tipo_trabajo
        ORDER BY total_toneladas DESC`,
       params
     );
 
-    const doc = new PDFDocument({ margins: { top: 40, bottom: 20, left: 40, right: 40 }, size: "A4", layout: "landscape" });
+    // --- Si no hay datos ---
+    if (!dias && (!materiales || materiales.length === 0)) {
+      return res.status(404).json({ error: "No hay datos para el rango especificado." });
+    }
+
+    // --- Crear documento PDF ---
+    const doc = new PDFDocument({
+      margins: { top: 40, bottom: 20, left: 40, right: 40 },
+      size: "A4",
+      layout: "landscape",
+      bufferPages: true
+    });
     res.setHeader("Content-Disposition", "attachment; filename=reporte_estadisticas.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
 
+    // --- Encabezado ---
     await addHeader(doc, "RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
 
+    // --- Total de días trabajados ---
     doc.font("Helvetica-Bold").fontSize(12).text("Total de días trabajados:", 40, doc.y);
-    doc.font("Helvetica-Bold").fontSize(18).text(String(dias.dias_trabajados || 0), 220, doc.y - 16);
+    doc.font("Helvetica-Bold").fontSize(18).text(String(dias?.dias_trabajados || 0), 250, doc.y - 16);
     doc.moveDown(1.5);
 
+    // --- Totales por tipo de trabajo ---
     doc.font("Helvetica-Bold").fontSize(12).text("Totales por tipo de trabajo (toneladas)", 40, doc.y);
     doc.moveDown(0.5);
 
     const headers = ["Nº", "Tipo de trabajo", "Toneladas totales"];
     const rows = materiales.map(m => [
       m.tipo_trabajo,
-      (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
+      (m.total_toneladas ?? 0).toLocaleString("es-PE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
     ]);
     const widths = [30, 300, 180];
 
-    drawTable(doc, headers, tableData, 120, 20, columnWidths);
+    drawTable(doc, headers, rows, 120, 20, widths);
 
-// 🔹 Evitar salto de página en blanco
+    // --- Evitar salto de página en blanco ---
     if (doc.page === null) {
-       doc.addPage();
+      doc.addPage();
     }
 
-// 🔹 Fijar el pie dentro de la última página real
+    // --- Pie de página ---
     addFooter(doc);
 
-// 🔹 Terminar el documento correctamente
+    // --- Cerrar PDF correctamente ---
     doc.flushPages();
     doc.end();
 
   } catch (error) {
-    console.error("Error al generar reporte de estadísticas:", error);
+    console.error("❌ Error al generar reporte de estadísticas:", error);
     res.status(500).json({ error: "Error al generar el reporte de estadísticas" });
   }
 });
