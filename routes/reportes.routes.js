@@ -104,7 +104,7 @@ function addFooter(doc) {
       .lineTo(doc.page.width - 40, y)
       .stroke();
 
-    doc.fontSize(8).fillColor("gray")
+    doc.fontSize(9).fillColor("gray")
       .text(`Generado automáticamente - Página ${i + 1} de ${pageCount}`,
         0, doc.page.height - 35,
         { align: "center", width: doc.page.width });
