@@ -2,13 +2,14 @@
   "name": "minecontrol-backend",
   "version": "1.0.0",
   "description": "Backend del sistema MineControl Perú",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "NetLink Perú",
+  "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
@@ -16,9 +17,7 @@
     "express": "^5.1.0",
     "mysql2": "^3.15.2",
     "node-fetch": "^2.7.0",
-    "pdfkit": "^0.17.2",
-    "morgan": "^1.10.0",
-    "body-parser": "^1.20.3"
+    "pdfkit": "^0.17.2"
   },
   "engines": {
     "node": "20.x"

@@ -1,9 +1,8 @@
-const express = require("express");
-const PDFDocument = require("pdfkit");
-const fs = require("fs");
-const path = require("path");
-const connection = require("../config/db.js");
-const fetch = require("node-fetch");
+import express from "express";
+import PDFDocument from "pdfkit";
+import fs from "fs";
+import connection from "../config/db.js";
+import fetch from "node-fetch";
 
 const router = express.Router();
 
@@ -48,7 +47,7 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
 }
 
 /* =======================================================
-   🔹 ENCABEZADO CON LOGO Y TÍTULOS
+   🔹 ENCABEZADO CON LOGO Y TÍTULOS CENTRADOS
 ======================================================= */
 async function addHeader(doc, title, filtro = {}) {
   const logoURL = "https://i.imgur.com/Y9TvSXs.png";
@@ -58,8 +57,8 @@ async function addHeader(doc, title, filtro = {}) {
     const arrayBuffer = await response.arrayBuffer();
     const logoBuffer = Buffer.from(arrayBuffer);
     doc.image(logoBuffer, 50, 30, { width: 80 });
-  } catch (error) {
-    console.error("⚠️ No se pudo cargar el logo remoto:", error.message);
+  } catch {
+    console.warn("⚠️ No se pudo cargar el logo remoto.");
   }
 
   doc.font("Helvetica-Bold").fontSize(18).text("NETLINK PERÚ", 0, 35, { align: "center" });
@@ -68,16 +67,14 @@ async function addHeader(doc, title, filtro = {}) {
 
   if (filtro.desde || filtro.hasta) {
     doc.moveDown(0.2);
-    doc.font("Helvetica").fontSize(10).text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, {
-      align: "center",
-    });
+    doc.font("Helvetica").fontSize(10).text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
   }
 
   doc.moveDown(1.5);
 }
 
 /* =======================================================
-   🔻 PIE DE PÁGINA
+   🔹 PIE DE PÁGINA
 ======================================================= */
 function addFooter(doc) {
   const pageCount = doc.bufferedPageRange().count;
@@ -86,13 +83,39 @@ function addFooter(doc) {
     const y = doc.page.height - 45;
     doc.strokeColor("#cccccc").moveTo(40, y).lineTo(doc.page.width - 40, y).stroke();
     doc.fontSize(8).fillColor("gray")
-      .text(`Generado automáticamente por el sistema - Página ${i + 1} de ${pageCount}`,
-        40, doc.page.height - 35, { align: "right", oblique: true });
+      .text(`Generado automáticamente por el sistema - Página ${i + 1} de ${pageCount}`, 40, doc.page.height - 35, { align: "right" });
   }
 }
 
 /* =======================================================
-   ✅ 1) REPORTE: ASISTENCIAS
+   ✅ 1) REPORTE: TRABAJADORES
+======================================================= */
+router.get("/trabajadores", async (req, res) => {
+  try {
+    const [rows] = await connection.query("SELECT nombres, apellidos, dni, cargo FROM trabajadores ORDER BY apellidos ASC");
+    if (rows.length === 0) return res.status(404).json({ message: "No hay trabajadores registrados" });
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    res.setHeader("Content-Disposition", "attachment; filename=reporte_trabajadores.pdf");
+    res.setHeader("Content-Type", "application/pdf");
+    doc.pipe(res);
+
+    await addHeader(doc, "LISTA DE TRABAJADORES");
+    const headers = ["Nº", "Nombres", "Apellidos", "DNI", "Cargo"];
+    const tableData = rows.map(t => [t.nombres, t.apellidos, t.dni, t.cargo || "-"]);
+    const columnWidths = [30, 120, 120, 100, 150];
+
+    drawTable(doc, headers, tableData, 140, 20, columnWidths);
+    addFooter(doc);
+    doc.end();
+  } catch (err) {
+    console.error("Error reporte trabajadores:", err);
+    res.status(500).json({ error: "Error al generar el reporte" });
+  }
+});
+
+/* =======================================================
+   ✅ 2) REPORTE: ASISTENCIAS
 ======================================================= */
 router.get("/asistencias", async (req, res) => {
   try {
@@ -119,57 +142,24 @@ router.get("/asistencias", async (req, res) => {
 
     await addHeader(doc, "REPORTE DE ASISTENCIAS", { desde, hasta });
     const headers = ["Nº", "Nombres", "Apellidos", "Fecha", "Entrada", "Salida", "Observaciones"];
-    const tableData = rows.map(r => [
-      r.nombres, r.apellidos, r.fecha, r.hora_entrada || "-", r.hora_salida || "-", r.observaciones || "-"
-    ]);
+    const tableData = rows.map(r => [r.nombres, r.apellidos, r.fecha, r.hora_entrada, r.hora_salida, r.observaciones]);
     const columnWidths = [30, 90, 90, 70, 60, 60, 100];
 
     drawTable(doc, headers, tableData, 140, 20, columnWidths);
     addFooter(doc);
     doc.end();
-  } catch (error) {
-    console.error("Error al generar reporte de asistencias:", error);
-    res.status(500).json({ error: "Error al generar el reporte de asistencias" });
+  } catch (err) {
+    console.error("Error reporte asistencias:", err);
+    res.status(500).json({ error: "Error al generar el reporte" });
   }
 });
 
 /* =======================================================
-   ✅ 2) REPORTE: TRABAJADORES
-======================================================= */
-router.get("/trabajadores", async (req, res) => {
-  try {
-    const [rows] = await connection.query(`SELECT nombres, apellidos, dni, cargo FROM trabajadores ORDER BY apellidos ASC`);
-    if (rows.length === 0) return res.status(404).json({ message: "No hay trabajadores registrados" });
-
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    res.setHeader("Content-Disposition", "attachment; filename=reporte_trabajadores.pdf");
-    res.setHeader("Content-Type", "application/pdf");
-    doc.pipe(res);
-
-    await addHeader(doc, "LISTA DE TRABAJADORES");
-    const headers = ["Nº", "Nombres", "Apellidos", "DNI", "Cargo"];
-    const tableData = rows.map(t => [t.nombres, t.apellidos, t.dni, t.cargo || "-"]);
-    const columnWidths = [30, 120, 120, 100, 150];
-
-    drawTable(doc, headers, tableData, 140, 20, columnWidths);
-    addFooter(doc);
-    doc.end();
-  } catch (error) {
-    console.error("Error al generar reporte de trabajadores:", error);
-    res.status(500).json({ error: "Error al generar el reporte de trabajadores" });
-  }
-});
-
-/* =======================================================
-   ✅ 3) REPORTE: MAQUINARIAS
+   ✅ 3) REPORTE: MAQUINARIAS (HORIZONTAL)
 ======================================================= */
 router.get("/maquinarias", async (req, res) => {
   try {
-    const [rows] = await connection.query(`
-      SELECT codigo, nombre, tipo, marca, modelo, placa, estado
-      FROM maquinarias
-      ORDER BY estado DESC, nombre ASC
-    `);
+    const [rows] = await connection.query("SELECT codigo, nombre, tipo, marca, modelo, placa, estado FROM maquinarias ORDER BY estado DESC, nombre ASC");
     if (rows.length === 0) return res.status(404).json({ message: "No hay maquinarias registradas" });
 
     const doc = new PDFDocument({ margin: 40, size: "A4", layout: "landscape" });
@@ -185,9 +175,9 @@ router.get("/maquinarias", async (req, res) => {
     drawTable(doc, headers, tableData, 140, 20, columnWidths, 842);
     addFooter(doc);
     doc.end();
-  } catch (error) {
-    console.error("Error al generar reporte de maquinarias:", error);
-    res.status(500).json({ error: "Error al generar el reporte de maquinarias" });
+  } catch (err) {
+    console.error("Error reporte maquinarias:", err);
+    res.status(500).json({ error: "Error al generar el reporte" });
   }
 });
 
@@ -221,17 +211,15 @@ router.get("/maquinarias/registro", async (req, res) => {
 
     await addHeader(doc, "REGISTRO DE INGRESOS Y SALIDAS DE MAQUINARIAS", { desde, hasta });
     const headers = ["Nº", "Maquinaria", "Trabajador", "Fecha", "Entrada", "Salida", "Tipo trabajo", "Observaciones"];
-    const tableData = rows.map(r => [
-      r.maquinaria, r.trabajador, r.fecha, r.hora_entrada || "-", r.hora_salida || "-", r.tipo_trabajo || "-", r.observaciones || "-"
-    ]);
+    const tableData = rows.map(r => [r.maquinaria, r.trabajador, r.fecha, r.hora_entrada, r.hora_salida, r.tipo_trabajo, r.observaciones]);
     const columnWidths = [30, 110, 120, 70, 60, 60, 110, 130];
 
     drawTable(doc, headers, tableData, 140, 20, columnWidths, 842);
     addFooter(doc);
     doc.end();
-  } catch (error) {
-    console.error("Error al generar reporte de registro de maquinarias:", error);
-    res.status(500).json({ error: "Error al generar el reporte de registro de maquinarias" });
+  } catch (err) {
+    console.error("Error reporte registro maquinarias:", err);
+    res.status(500).json({ error: "Error al generar el reporte" });
   }
 });
 
@@ -241,28 +229,25 @@ router.get("/maquinarias/registro", async (req, res) => {
 router.get("/estadisticas", async (req, res) => {
   try {
     const { desde, hasta } = req.query;
-    const where = desde && hasta ? `WHERE a.fecha BETWEEN ? AND ?` : "";
+    const where = desde && hasta ? "WHERE a.fecha BETWEEN ? AND ?" : "";
     const params = desde && hasta ? [desde, hasta] : [];
 
-    const [[dias]] = await connection.query(
-      `SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${where}`, params
-    );
-
+    const [[dias]] = await connection.query(`SELECT COUNT(DISTINCT a.fecha) AS dias_trabajados FROM asistencias a ${where}`, params);
     const [materiales] = await connection.query(
       `SELECT COALESCE(rm.tipo_trabajo,'Sin especificar') AS tipo_trabajo,
               ROUND(SUM(COALESCE(rm.toneladas_movidas,0)),2) AS total_toneladas
        FROM registro_maquinaria rm
        ${where.replace("a.fecha","rm.fecha")}
        GROUP BY rm.tipo_trabajo
-       ORDER BY total_toneladas DESC`, params
-    );
+       ORDER BY total_toneladas DESC`, params);
 
-    const doc = new PDFDocument({ margins: { top: 40, bottom: 20, left: 40, right: 40 }, size: "A4", layout: "landscape" });
+    const doc = new PDFDocument({ margin: 40, size: "A4", layout: "landscape" });
     res.setHeader("Content-Disposition", "attachment; filename=reporte_estadisticas.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
 
     await addHeader(doc, "RESUMEN ESTADÍSTICO DE OPERACIONES", { desde, hasta });
+
     doc.font("Helvetica-Bold").fontSize(12).text("Total de días trabajados:", 40, doc.y);
     doc.font("Helvetica-Bold").fontSize(18).text(String(dias.dias_trabajados || 0), 220, doc.y - 16);
     doc.moveDown(1.5);
@@ -271,20 +256,16 @@ router.get("/estadisticas", async (req, res) => {
     doc.moveDown(0.5);
 
     const headers = ["Nº", "Tipo de trabajo", "Toneladas totales"];
-    const tableData = materiales.map(m => [
-      m.tipo_trabajo,
-      (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 }),
-    ]);
+    const tableData = materiales.map(m => [m.tipo_trabajo, (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })]);
     const columnWidths = [30, 300, 180];
 
     drawTable(doc, headers, tableData, 120, 20, columnWidths);
     addFooter(doc);
-    doc.flushPages();
     doc.end();
-  } catch (error) {
-    console.error("Error al generar reporte de estadísticas:", error);
-    res.status(500).json({ error: "Error al generar el reporte de estadísticas" });
+  } catch (err) {
+    console.error("Error reporte estadisticas:", err);
+    res.status(500).json({ error: "Error al generar el reporte" });
   }
 });
 
-module.exports = router;
+export default router;
