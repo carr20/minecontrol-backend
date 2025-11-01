@@ -74,12 +74,12 @@ async function addHeader(doc, title, filtro = {}) {
 
   // 🔹 Mostrar rango de fechas si existe
   if (filtro.desde || filtro.hasta) {
-    doc.font("Helvetica").fontSize(10)
-      .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, centerX - 150, 85, {
-        width: 300,
-        align: "center"
-      });
-  }
+  doc.moveDown(0.8); // 🔹 más espacio antes del rango
+  doc.font("Helvetica").fontSize(10)
+     .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
+}
+
+doc.moveDown(1.8); // 🔹 más espacio antes de la tabla
 
   // 🔹 Reducir espacio entre encabezado y tabla (evita salto de página)
   doc.moveDown(0.3);
