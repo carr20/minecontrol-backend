@@ -91,11 +91,17 @@ function addFooter(doc) {
   const pageCount = doc.bufferedPageRange().count;
   for (let i = 0; i < pageCount; i++) {
     doc.switchToPage(i);
-    const y = doc.page.height - 40;
-    doc.strokeColor("#cccccc").moveTo(40, y).lineTo(doc.page.width - 40, y).stroke();
+
+    const y = doc.page.height - 45;
+    doc.strokeColor("#cccccc")
+      .moveTo(40, y)
+      .lineTo(doc.page.width - 40, y)
+      .stroke();
+
     doc.fontSize(8).fillColor("gray")
       .text(`Generado automáticamente - Página ${i + 1} de ${pageCount}`,
-        0, doc.page.height - 30, { align: "center" });
+        0, doc.page.height - 35,
+        { align: "center", width: doc.page.width });
   }
 }
 
@@ -108,7 +114,7 @@ router.get("/trabajadores", async (req, res) => {
     const [rows] = await connection.query(`SELECT nombres, apellidos, dni, cargo FROM trabajadores ORDER BY apellidos ASC`);
     if (rows.length === 0) return res.status(404).json({ message: "No hay trabajadores registrados" });
 
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const doc = new PDFDocument({ margins: { top: 40, bottom: 20, left: 40, right: 40 }, size: "A4" });
     res.setHeader("Content-Disposition", "attachment; filename=reporte_trabajadores.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
@@ -120,8 +126,19 @@ router.get("/trabajadores", async (req, res) => {
     const columnWidths = [30, 120, 120, 100, 150];
 
     drawTable(doc, headers, tableData, 120, 20, columnWidths);
-    addFooter(doc);
-    doc.end();
+
+// 🔹 Evitar salto de página en blanco
+if (doc.page === null) {
+  doc.addPage();
+}
+
+// 🔹 Fijar el pie dentro de la última página real
+addFooter(doc);
+
+// 🔹 Terminar el documento correctamente
+doc.flushPages();
+doc.end();
+
   } catch (error) {
     console.error("Error al generar reporte de trabajadores:", error);
     res.status(500).json({ error: "Error al generar el reporte de trabajadores" });
@@ -149,7 +166,7 @@ router.get("/asistencias", async (req, res) => {
     const [rows] = await connection.query(query, params);
     if (rows.length === 0) return res.status(404).json({ mensaje: "No hay asistencias registradas en ese rango." });
 
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const doc = new PDFDocument({ margins: { top: 40, bottom: 20, left: 40, right: 40 }, size: "A4" });
     res.setHeader("Content-Disposition", "attachment; filename=reporte_asistencias.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
@@ -165,8 +182,19 @@ router.get("/asistencias", async (req, res) => {
     const columnWidths = [30, 90, 90, 70, 60, 60, 100];
 
     drawTable(doc, headers, tableData, 120, 20, columnWidths);
-    addFooter(doc);
-    doc.end();
+
+// 🔹 Evitar salto de página en blanco
+if (doc.page === null) {
+  doc.addPage();
+}
+
+// 🔹 Fijar el pie dentro de la última página real
+addFooter(doc);
+
+// 🔹 Terminar el documento correctamente
+doc.flushPages();
+doc.end();
+
   } catch (error) {
     console.error("Error al generar reporte de asistencias:", error);
     res.status(500).json({ error: "Error al generar el reporte de asistencias" });
@@ -185,7 +213,7 @@ router.get("/maquinarias", async (req, res) => {
     `);
     if (rows.length === 0) return res.status(404).json({ message: "No hay maquinarias registradas" });
 
-    const doc = new PDFDocument({ margin: 40, size: "A4", layout: "landscape" });
+    const doc = new PDFDocument({ margins: { top: 40, bottom: 20, left: 40, right: 40 }, size: "A4", layout: "landscape" });
     res.setHeader("Content-Disposition", "attachment; filename=reporte_maquinarias.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
@@ -198,9 +226,20 @@ router.get("/maquinarias", async (req, res) => {
     ]);
     const columnWidths = [30, 70, 150, 100, 100, 100, 100, 80];
 
-    drawTable(doc, headers, tableData, 120, 20, columnWidths, 842);
-    addFooter(doc);
-    doc.end();
+    drawTable(doc, headers, tableData, 120, 20, columnWidths);
+
+// 🔹 Evitar salto de página en blanco
+if (doc.page === null) {
+  doc.addPage();
+}
+
+// 🔹 Fijar el pie dentro de la última página real
+addFooter(doc);
+
+// 🔹 Terminar el documento correctamente
+doc.flushPages();
+doc.end();
+
   } catch (error) {
     console.error("Error al generar reporte de maquinarias:", error);
     res.status(500).json({ error: "Error al generar el reporte de maquinarias" });
@@ -232,7 +271,7 @@ router.get("/maquinarias/registro", async (req, res) => {
     const [rows] = await connection.query(query, params);
     if (rows.length === 0) return res.status(404).json({ mensaje: "No hay registros de maquinarias." });
 
-    const doc = new PDFDocument({ margin: 40, size: "A4", layout: "landscape" });
+    const doc = new PDFDocument({ margins: { top: 40, bottom: 20, left: 40, right: 40 }, size: "A4", layout: "landscape" });
     res.setHeader("Content-Disposition", "attachment; filename=reporte_registro_maquinarias.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
@@ -248,9 +287,20 @@ router.get("/maquinarias/registro", async (req, res) => {
     ]);
     const columnWidths = [30, 110, 120, 70, 60, 60, 110, 130];
 
-    drawTable(doc, headers, tableData, 120, 20, columnWidths, 842);
-    addFooter(doc);
-    doc.end();
+    drawTable(doc, headers, tableData, 120, 20, columnWidths);
+
+// 🔹 Evitar salto de página en blanco
+if (doc.page === null) {
+  doc.addPage();
+}
+
+// 🔹 Fijar el pie dentro de la última página real
+addFooter(doc);
+
+// 🔹 Terminar el documento correctamente
+doc.flushPages();
+doc.end();
+
   } catch (error) {
     console.error("Error al generar reporte de registro de maquinarias:", error);
     res.status(500).json({ error: "Error al generar el reporte de registro de maquinarias" });
@@ -284,7 +334,7 @@ router.get("/estadisticas", async (req, res) => {
       params
     );
 
-    const doc = new PDFDocument({ margin: 40, size: "A4", layout: "landscape" });
+    const doc = new PDFDocument({ margins: { top: 40, bottom: 20, left: 40, right: 40 }, size: "A4", layout: "landscape" });
     res.setHeader("Content-Disposition", "attachment; filename=reporte_estadisticas.pdf");
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
@@ -305,9 +355,20 @@ router.get("/estadisticas", async (req, res) => {
     ]);
     const widths = [30, 300, 180];
 
-    drawTable(doc, headers, rows, doc.y + 10, 20, widths, 842);
+    drawTable(doc, headers, tableData, 120, 20, columnWidths);
+
+// 🔹 Evitar salto de página en blanco
+    if (doc.page === null) {
+       doc.addPage();
+    }
+
+// 🔹 Fijar el pie dentro de la última página real
     addFooter(doc);
+
+// 🔹 Terminar el documento correctamente
+    doc.flushPages();
     doc.end();
+
   } catch (error) {
     console.error("Error al generar reporte de estadísticas:", error);
     res.status(500).json({ error: "Error al generar el reporte de estadísticas" });
