@@ -46,7 +46,7 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
 }
 
 /* =======================================================
-   🔹 ENCABEZADO CON LOGO Y TÍTULOS CENTRADOS REALES
+   🔹 ENCABEZADO CON LOGO Y TÍTULOS CENTRADOS REALES (AZUL)
 ======================================================= */
 async function addHeader(doc, title, filtro = {}) {
   const logoURL = "https://minecontrol-backend.onrender.com/logo.png";
@@ -62,34 +62,34 @@ async function addHeader(doc, title, filtro = {}) {
     console.error("⚠️ No se pudo cargar el logo:", error.message);
   }
 
-  // 🔹 Título principal de color azul (similar al logo)
-  doc.fillColor("#004b87") // azul corporativo
-     .font("Helvetica-Bold")
-     .fontSize(18)
-     .text("NETLINK PERÚ", 0, 35, { align: "center" });
-
-  // 🔹 Alinear el texto al centro del documento (sin desplazarse por el logo)
+  // 🔹 Alinear el texto al centro del documento
   const pageWidth = doc.page.width;
   const centerX = pageWidth / 2;
 
-  doc.font("Helvetica-Bold").fontSize(18)
+  // 🔹 Título principal azul (similar al color del logo)
+  doc.fillColor("#004b87")
+    .font("Helvetica-Bold")
+    .fontSize(18)
     .text("NETLINK PERÚ", centerX - 100, 40, { width: 200, align: "center" });
 
-  doc.font("Helvetica-Bold").fontSize(13)
+  // 🔹 Subtítulo negro
+  doc.fillColor("black")
+    .font("Helvetica-Bold")
+    .fontSize(13)
     .text(title, centerX - 150, 65, { width: 300, align: "center" });
 
   // 🔹 Mostrar rango de fechas si existe
   if (filtro.desde || filtro.hasta) {
-  doc.moveDown(0.8); // 🔹 más espacio antes del rango
-  doc.font("Helvetica").fontSize(10)
-     .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
+    doc.moveDown(0.8); // más espacio antes del rango
+    doc.font("Helvetica")
+      .fontSize(10)
+      .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
+  }
+
+  // 🔹 Espacio antes de la tabla
+  doc.moveDown(1.8);
 }
 
-doc.moveDown(1.8); // 🔹 más espacio antes de la tabla
-
-  // 🔹 Reducir espacio entre encabezado y tabla (evita salto de página)
-  doc.moveDown(0.3);
-}
 
 /* =======================================================
    🔻 PIE DE PÁGINA CON LÍNEA Y NUMERACIÓN
