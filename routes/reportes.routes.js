@@ -46,43 +46,37 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
 }
 
 /* =======================================================
-   🔹 ENCABEZADO CON LOGO Y TÍTULOS CENTRADOS REALES
+   🔹 ENCABEZADO MEJORADO (alineado con logo y centrado)
 ======================================================= */
 async function addHeader(doc, title, filtro = {}) {
-  const logoURL = "https://minecontrol-backend.onrender.com/logo.png";
+  const logoURL = "https://i.imgur.com/Y9TvSXs.png";
 
-  // 🔹 Intentar cargar el logo desde Render
   try {
     const response = await fetch(logoURL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const arrayBuffer = await response.arrayBuffer();
     const logoBuffer = Buffer.from(arrayBuffer);
-    doc.image(logoBuffer, 60, 35, { width: 70 });
-  } catch (error) {
-    console.error("⚠️ No se pudo cargar el logo:", error.message);
+
+    // 🔹 Logo alineado a la izquierda
+    doc.image(logoBuffer, 60, 40, { width: 80 });
+  } catch {
+    console.warn("⚠️ No se pudo cargar el logo remoto.");
   }
 
-  // 🔹 Alinear el texto al centro del documento (sin desplazarse por el logo)
-  const pageWidth = doc.page.width;
-  const centerX = pageWidth / 2;
-
-  doc.font("Helvetica-Bold").fontSize(18)
-    .text("NETLINK PERÚ", centerX - 100, 40, { width: 200, align: "center" });
-
-  doc.font("Helvetica-Bold").fontSize(13)
-    .text(title, centerX - 150, 65, { width: 300, align: "center" });
-
-  // 🔹 Mostrar rango de fechas si existe
-  if (filtro.desde || filtro.hasta) {
-  doc.moveDown(0.8); // 🔹 más espacio antes del rango
-  doc.font("Helvetica").fontSize(10)
-     .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
-}
-
-doc.moveDown(1.8); // 🔹 más espacio antes de la tabla
-
-  // 🔹 Reducir espacio entre encabezado y tabla (evita salto de página)
+  // 🔹 Título centrado verticalmente con el logo
+  doc.font("Helvetica-Bold").fontSize(18).text("NETLINK PERÚ", 0, 50, { align: "center" });
   doc.moveDown(0.3);
+
+  doc.font("Helvetica-Bold").fontSize(14).text(title, { align: "center" });
+
+  // 🔹 Mostrar rango si existe
+  if (filtro.desde || filtro.hasta) {
+    doc.moveDown(0.8);
+    doc.font("Helvetica").fontSize(10)
+      .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
+  }
+
+  // 🔹 Añadir espacio para separar del contenido principal
+  doc.moveDown(2);
 }
 
 /* =======================================================
