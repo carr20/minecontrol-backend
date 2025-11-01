@@ -355,49 +355,48 @@ router.get("/estadisticas", async (req, res) => {
     doc.moveDown(1.5);
 
     // Tabla de tonelaje por tipo de trabajo
-    doc.font("Helvetica-Bold").fontSize(12).text("Totales por tipo de trabajo (toneladas)", 40, doc.y);
-    doc.moveDown(0.5);
+doc.font("Helvetica-Bold").fontSize(12).text("Totales por tipo de trabajo (toneladas)", 40, doc.y);
+doc.moveDown(0.5);
 
-    const headers = ["Nº", "Tipo de trabajo", "Toneladas totales"];
-    const rows = materiales.map(m => [
-      m.tipo_trabajo,
-      (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
-    ]);
-    const widths = [30, 300, 180];
-    drawTable(doc, headers, rows, 120, 20, widths);
+const headers = ["Nº", "Tipo de trabajo", "Toneladas totales"];
+const rows = materiales.map(m => [
+  m.tipo_trabajo,
+  (m.total_toneladas ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })
+]);
+const widths = [30, 300, 180];
+drawTable(doc, headers, rows, 120, 20, widths);
 
-    /* =======================================================
-       🔹 GENERAR GRÁFICO DE TONELADAS
-    ======================================================== */
-    if (materiales.length > 0) {
-      const chartURL = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
-        type: "bar",
-        data: {
-          labels: materiales.map(m => m.tipo_trabajo),
-          datasets: [{
-            label: "Toneladas movidas",
-            data: materiales.map(m => m.total_toneladas),
-            backgroundColor: "rgba(54, 162, 235, 0.7)"
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: "Toneladas por tipo de trabajo" } },
-          scales: { y: { beginAtZero: true } }
-        }
-      }))}`;
-
-      try {
-        const chartResponse = await fetch(chartURL);
-        const chartBuffer = Buffer.from(await chartResponse.arrayBuffer());
-
-        // Nueva página para el gráfico
-        doc.addPage();
-        doc.font("Helvetica-Bold").fontSize(14).text("Gráfico de tonelaje por tipo de trabajo", 40, 60);
-        doc.image(chartBuffer, 60, 100, { width: 680 });
-      } catch (err) {
-        console.error("⚠️ No se pudo generar el gráfico:", err.message);
-      }
+/* =======================================================
+   🔹 GRÁFICO DE TONELADAS (QuickChart)
+======================================================= */
+if (materiales.length > 0) {
+  const chartURL = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
+    type: "bar",
+    data: {
+      labels: materiales.map(m => m.tipo_trabajo),
+      datasets: [{
+        label: "Toneladas movidas",
+        data: materiales.map(m => m.total_toneladas),
+        backgroundColor: "rgba(54, 162, 235, 0.7)"
+      }]
+    },
+    options: {
+      plugins: { title: { display: true, text: "Toneladas por tipo de trabajo" } },
+      scales: { y: { beginAtZero: true } }
     }
+  }))}`;
+
+  try {
+    const chartResponse = await fetch(chartURL);
+    const chartBuffer = Buffer.from(await chartResponse.arrayBuffer());
+    doc.addPage();
+    doc.font("Helvetica-Bold").fontSize(14).text("Gráfico de tonelaje por tipo de trabajo", 40, 60);
+    doc.image(chartBuffer, 60, 100, { width: 680 });
+  } catch (err) {
+    console.error("⚠️ No se pudo generar el gráfico:", err.message);
+  }
+}
+
 
     // Pie de página
     addFooter(doc);
