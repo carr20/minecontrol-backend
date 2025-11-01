@@ -69,14 +69,14 @@ async function addHeader(doc, title, filtro = {}) {
   // 🔹 Título principal azul (similar al color del logo)
   doc.fillColor("#004b87")
     .font("Helvetica-Bold")
-    .fontSize(18)
-    .text("NETLINK PERÚ", centerX - 100, 40, { width: 200, align: "center" });
+    .fontSize(22)
+    .text("NETLINK PERÚ", centerX - 110, 35, { width: 220, align: "center" });
 
   // 🔹 Subtítulo negro
   doc.fillColor("black")
     .font("Helvetica-Bold")
     .fontSize(13)
-    .text(title, centerX - 150, 65, { width: 300, align: "center" });
+    .text(title, centerX - 160, 70, { width: 320, align: "center" });
 
   // 🔹 Mostrar rango de fechas si existe
   if (filtro.desde || filtro.hasta) {
@@ -89,7 +89,6 @@ async function addHeader(doc, title, filtro = {}) {
   // 🔹 Espacio antes de la tabla
   doc.moveDown(1.8);
 }
-
 
 /* =======================================================
    🔻 PIE DE PÁGINA CON LÍNEA Y NUMERACIÓN
