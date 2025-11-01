@@ -82,7 +82,7 @@ async function addHeader(doc, title, filtro = {}) {
   if (filtro.desde || filtro.hasta) {
     doc.moveDown(0.8); // más espacio antes del rango
     doc.font("Helvetica")
-      .fontSize(9)
+      .fontSize(8)
       .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
   }
 
