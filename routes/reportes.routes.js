@@ -84,37 +84,42 @@ async function addHeader(doc, title, filtro = {}) {
   doc.moveDown(1.8);
 }
 
+
 /* =======================================================
    🔻 PIE DE PÁGINA SEGURO (sin páginas en blanco)
 ======================================================= */
 function addFooter(doc) {
   try {
-    const range = doc.bufferedPageRange();
+    // usar el rango real del buffer (recomendado por pdfkit)
+    const range = doc.bufferedPageRange(); // { start, count }
 
     for (let i = range.start; i < range.start + range.count; i++) {
       doc.switchToPage(i);
+
+      // dibuja línea y texto sin provocar salto
       const y = doc.page.height - 45;
 
-      doc
-        .save()
-        .strokeColor("#cccccc")
+      doc.save();
+      doc.strokeColor("#cccccc")
         .moveTo(40, y)
         .lineTo(doc.page.width - 40, y)
-        .stroke()
-        .fontSize(8)
+        .stroke();
+
+      doc.fontSize(8)
         .fillColor("gray")
         .text(
           `Generado automáticamente - Página ${i - range.start + 1} de ${range.count}`,
           40,
           doc.page.height - 35,
-          { align: "right" }
-        )
-        .restore();
+          { align: "right", lineBreak: false }
+        );
+      doc.restore();
     }
   } catch (err) {
     console.error("⚠️ Error en addFooter:", err?.message || err);
   }
 }
+
 
 
 /* =======================================================
@@ -461,11 +466,11 @@ router.get("/todos", async (req, res) => {
     const params = desde && hasta ? [desde, hasta] : [];
 
     const doc = new PDFDocument({
-      margin: 40,
-      size: "A4",
-      layout: "portrait",
-      bufferPages: true
-    });
+  margins: { top: 40, bottom: 20, left: 40, right: 40 }, // <-- en plural
+  size: "A4",
+  layout: "portrait",
+  bufferPages: true
+  });
 
     res.setHeader("Content-Disposition", "attachment; filename=reporte_general.pdf");
     res.setHeader("Content-Type", "application/pdf");
@@ -594,6 +599,6 @@ router.get("/todos", async (req, res) => {
     console.error("❌ Error al generar reporte general:", error);
     res.status(500).json({ error: "Error al generar el reporte general" });
   }
-});
+  });
 
 export default router;
