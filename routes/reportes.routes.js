@@ -46,34 +46,44 @@ function drawTable(doc, headers, rows, startY = 150, rowHeight = 20, columnWidth
 }
 
 /* =======================================================
-   🔹 ENCABEZADO CON LOGO SERVIDO LOCALMENTE
+   🔹 ENCABEZADO CON LOGO Y TÍTULOS CENTRADOS REALES
 ======================================================= */
 async function addHeader(doc, title, filtro = {}) {
-  const logoURL = "https://minecontrol-backend.onrender.com/logo.png"; // 🖼️ tu logo en Render
+  const logoURL = "https://minecontrol-backend.onrender.com/logo.png";
 
+  // 🔹 Intentar cargar el logo desde Render
   try {
     const response = await fetch(logoURL);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const arrayBuffer = await response.arrayBuffer();
     const logoBuffer = Buffer.from(arrayBuffer);
-    doc.image(logoBuffer, 50, 30, { width: 80 });
+    doc.image(logoBuffer, 60, 35, { width: 70 });
   } catch (error) {
     console.error("⚠️ No se pudo cargar el logo:", error.message);
   }
 
-  doc.fillColor("black").font("Helvetica-Bold").fontSize(18).text("NETLINK PERÚ", 0, 35, { align: "center" });
-  doc.moveDown(0.3);
-  doc.font("Helvetica-Bold").fontSize(14).text(title, { align: "center" });
+  // 🔹 Alinear el texto al centro del documento (sin desplazarse por el logo)
+  const pageWidth = doc.page.width;
+  const centerX = pageWidth / 2;
 
+  doc.font("Helvetica-Bold").fontSize(18)
+    .text("NETLINK PERÚ", centerX - 100, 40, { width: 200, align: "center" });
+
+  doc.font("Helvetica-Bold").fontSize(13)
+    .text(title, centerX - 150, 65, { width: 300, align: "center" });
+
+  // 🔹 Mostrar rango de fechas si existe
   if (filtro.desde || filtro.hasta) {
-    doc.moveDown(0.2);
     doc.font("Helvetica").fontSize(10)
-      .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, { align: "center" });
+      .text(`Rango: ${filtro.desde || "---"} hasta ${filtro.hasta || "---"}`, centerX - 150, 85, {
+        width: 300,
+        align: "center"
+      });
   }
 
-  doc.moveDown(1.5);
+  // 🔹 Reducir espacio entre encabezado y tabla (evita salto de página)
+  doc.moveDown(0.8);
 }
-
 /* =======================================================
    🔻 PIE DE PÁGINA CON LÍNEA Y NUMERACIÓN
 ======================================================= */
