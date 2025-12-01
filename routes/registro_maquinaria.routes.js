@@ -131,7 +131,7 @@ router.delete("/:id", async (req, res) => {
 
 
 // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
-//      🚜 NUEVO: MARCAR ENTRADA / SALIDA
+//      🚜 MARCAR ENTRADA / SALIDA
 // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
 
 router.post("/marcar", async (req, res) => {
@@ -150,13 +150,31 @@ router.post("/marcar", async (req, res) => {
 
     if (!id_maquinaria || !marca) {
       return res.status(400).json({
-        message:
-          "id_maquinaria y tipo (entrada/salida) son obligatorios.",
+        message: "id_maquinaria y tipo (entrada/salida) son obligatorios.",
       });
     }
 
     // -------------------- ENTRADA ---------------------
     if (marca === "entrada") {
+      // 🔒 Verificar si YA existe un registro ABIERTO (sin hora_salida)
+      const [abiertos] = await connection.query(
+        `SELECT id
+         FROM registro_maquinaria
+         WHERE id_maquinaria = ?
+           AND hora_salida IS NULL
+         ORDER BY id DESC
+         LIMIT 1`,
+        [id_maquinaria]
+      );
+
+      if (abiertos.length > 0) {
+        return res.status(400).json({
+          message:
+            "Esta maquinaria ya tiene una ENTRADA sin SALIDA. Registre la salida antes de una nueva entrada.",
+        });
+      }
+
+      // Si no hay registro abierto, se registra la ENTRADA
       await connection.query(
         `INSERT INTO registro_maquinaria
         (id_maquinaria, fecha, hora_entrada, hora_salida, tipo_trabajo, toneladas_movidas, operador_nombre, observaciones)
@@ -181,7 +199,7 @@ router.post("/marcar", async (req, res) => {
       const [rows] = await connection.query(
         `SELECT id FROM registro_maquinaria
          WHERE id_maquinaria = ?
-         AND hora_salida IS NULL
+           AND hora_salida IS NULL
          ORDER BY id DESC
          LIMIT 1`,
         [id_maquinaria]
@@ -227,8 +245,7 @@ router.post("/marcar", async (req, res) => {
   }
 });
 
-
-
 // ⭐ FIN DE LA RUTA NUEVA ⭐
+
 export default router;
 
