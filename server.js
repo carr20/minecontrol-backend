@@ -5,11 +5,19 @@ import connection from "./config/db.js";
 import routes from "./routes/index.js";
 import reportesRoutes from "./routes/reportes.routes.js";
 
+// ⭐⭐ NUEVO: para servir archivos correctamente ⭐⭐
+import path from "path";
+
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ⭐⭐ NUEVO: Servir archivos subidos (PDF, imágenes, etc.) ⭐⭐
+// Esto permite acceder a URLs como: /uploads/documentos/archivo.pdf
+app.use("/uploads", express.static("uploads"));
+
 
 // ✅ Servir carpeta "public" para el logo y otros recursos
 app.use(express.static("public"));
