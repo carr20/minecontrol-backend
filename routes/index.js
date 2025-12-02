@@ -21,7 +21,7 @@ router.use("/usuarios", usuariosRoutes);
 router.use("/roles", rolesRoutes);
 router.use("/asistencias", asistenciasRoutes); // 👈 nueva
 router.use("/registro_maquinaria", registroMaquinariaRoutes);
-router.use("/documentos", documentosTrabajadorRoutes);
+router.use("/documentos_trabajador", documentosTrabajadorRoutes);
 router.use("/reportes", reportesRoutes);
 
 
