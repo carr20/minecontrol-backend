@@ -147,11 +147,46 @@ router.put("/:id", async (req, res) => {
 });
 
 // ✅ Eliminar documento
+// ✅ Eliminar documento (BD + archivo físico)
 router.delete("/:id", async (req, res) => {
   try {
+    const id = req.params.id;
+
+    // 1️⃣ Buscar el documento para obtener la ruta del archivo
+    const [rows] = await connection.query(
+      "SELECT ruta_archivo FROM documentos_trabajador WHERE id = ?",
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Documento no encontrado" });
+    }
+
+    const rutaBD = rows[0].ruta_archivo; // ej: "/uploads/documentos/doc_123.pdf"
+
+    // 2️⃣ Intentar borrar el archivo físico si existe
+    if (rutaBD) {
+      // quitamos el "/" inicial si lo tiene
+      const rutaRelativa = rutaBD.startsWith("/") ? rutaBD.slice(1) : rutaBD;
+
+      // armamos la ruta física absoluta en el servidor
+      const rutaFisica = path.join(process.cwd(), rutaRelativa);
+
+      if (fs.existsSync(rutaFisica)) {
+        try {
+          fs.unlinkSync(rutaFisica); // borra el archivo
+        } catch (err) {
+          console.error("No se pudo borrar el archivo físico:", err);
+          // NO hacemos return, igual seguimos y borramos el registro en BD
+        }
+      }
+    }
+
+    // 3️⃣ Borrar el registro de la BD
     await connection.query("DELETE FROM documentos_trabajador WHERE id = ?", [
-      req.params.id
+      id
     ]);
+
     res.json({ message: "🗑️ Documento eliminado correctamente" });
   } catch (error) {
     console.error("Error al eliminar documento:", error);
