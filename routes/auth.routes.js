@@ -1,76 +1,72 @@
 // backend/routes/auth.routes.js
-import { Router } from "express";
+import express from "express";
 import connection from "../config/db.js";
+import bcrypt from "bcrypt";
 
-const router = Router();
+const router = express.Router();
 
-/**
- * POST /api/auth/login
- * Body: { identifier: "usuario_o_email", password: "contraseña" }
- */
+// pequeña ayuda para detectar si el campo ya es un hash bcrypt
+const isBcryptHash = (value) =>
+  typeof value === "string" && value.startsWith("$2") && value.length >= 50;
+
+// POST /api/auth/login
 router.post("/login", async (req, res) => {
-  const { identifier, password } = req.body;
+  const { username, password } = req.body;
 
-  if (!identifier || !password) {
+  if (!username || !password) {
     return res
       .status(400)
-      .json({ ok: false, error: "Usuario y contraseña son obligatorios." });
+      .json({ error: "Usuario y contraseña son obligatorios" });
   }
 
   try {
-    // Buscar por username O email
+    // Buscamos por username (puedes cambiarlo a email si prefieres)
     const [rows] = await connection.query(
-      `
-      SELECT id, username, email, password, id_rol, estado
-      FROM usuarios
-      WHERE (username = ? OR email = ?)
-      LIMIT 1
-    `,
-      [identifier, identifier]
+      "SELECT id, username, email, password, id_rol, estado FROM usuarios WHERE username = ? LIMIT 1",
+      [username]
     );
 
-    if (!rows.length) {
+    if (rows.length === 0) {
       return res
         .status(401)
-        .json({ ok: false, error: "Usuario o contraseña incorrectos." });
+        .json({ error: "Usuario o contraseña incorrectos" });
     }
 
     const user = rows[0];
 
     // Verificar estado
     if (user.estado !== "activo") {
-      return res
-        .status(403)
-        .json({ ok: false, error: "El usuario está inactivo." });
+      return res.status(403).json({ error: "El usuario está inactivo" });
     }
 
-    // ⚠️ Comparación simple (sin hash) porque tus contraseñas están en texto.
-    // Si luego quieres usar bcrypt, lo cambiamos.
-    if (user.password !== password) {
+    // Comprobamos contraseña
+    let passwordOk = false;
+
+    if (isBcryptHash(user.password)) {
+      // contraseña cifrada
+      passwordOk = await bcrypt.compare(password, user.password);
+    } else {
+      // ⚠️ modo compatibilidad: contraseña todavía sin cifrar
+      passwordOk = password === user.password;
+    }
+
+    if (!passwordOk) {
       return res
         .status(401)
-        .json({ ok: false, error: "Usuario o contraseña incorrectos." });
+        .json({ error: "Usuario o contraseña incorrectos" });
     }
 
-    // No mandamos la contraseña al frontend
-    const userResponse = {
+    // Si todo bien, devolvemos datos básicos del usuario
+    res.json({
       id: user.id,
       username: user.username,
       email: user.email,
       id_rol: user.id_rol,
       estado: user.estado,
-    };
-
-    return res.json({
-      ok: true,
-      message: "Login correcto.",
-      user: userResponse,
     });
-  } catch (err) {
-    console.error("Error en /api/auth/login:", err);
-    return res
-      .status(500)
-      .json({ ok: false, error: "Error interno en el servidor de login." });
+  } catch (error) {
+    console.error("Error en login:", error);
+    res.status(500).json({ error: "Error al procesar el login" });
   }
 });
 

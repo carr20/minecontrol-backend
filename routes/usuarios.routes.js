@@ -1,7 +1,10 @@
+// backend/routes/usuarios.routes.js
 import express from "express";
 import connection from "../config/db.js";
+import bcrypt from "bcrypt";
 
 const router = express.Router();
+const SALT_ROUNDS = 10;
 
 // ✅ Obtener todos los usuarios
 router.get("/", async (req, res) => {
@@ -31,13 +34,17 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ✅ Crear nuevo usuario
+// ✅ Crear nuevo usuario (password cifrado)
 router.post("/", async (req, res) => {
   try {
     const { username, email, password, id_rol, estado } = req.body;
+
+    // ⛑ ciframos la contraseña antes de guardar
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
     await connection.query(
       "INSERT INTO usuarios (username, email, password, id_rol, estado) VALUES (?, ?, ?, ?, ?)",
-      [username, email, password, id_rol, estado]
+      [username, email, hashedPassword, id_rol, estado]
     );
     res.status(201).json({ message: "✅ Usuario creado correctamente" });
   } catch (error) {
@@ -46,13 +53,19 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ✅ Actualizar usuario
+// ✅ Actualizar usuario (si viene password, se vuelve a cifrar)
 router.put("/:id", async (req, res) => {
   try {
-    const { username, email, password, id_rol, estado } = req.body;
+    let { username, email, password, id_rol, estado } = req.body;
+
+    // Si el frontend manda una contraseña vacía o null,
+    // podrías decidir NO cambiarla. Por ahora asumimos que
+    // siempre viene una contraseña válida y la ciframos.
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
     await connection.query(
       "UPDATE usuarios SET username=?, email=?, password=?, id_rol=?, estado=? WHERE id=?",
-      [username, email, password, id_rol, estado, req.params.id]
+      [username, email, hashedPassword, id_rol, estado, req.params.id]
     );
     res.json({ message: "✅ Usuario actualizado correctamente" });
   } catch (error) {
