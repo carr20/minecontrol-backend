@@ -7,7 +7,7 @@ import asistenciasRoutes from "./asistencias.routes.js"; // 👈 nueva
 import registroMaquinariaRoutes from "./registro_maquinaria.routes.js";
 import documentosTrabajadorRoutes from "./documentos_trabajador.routes.js";
 import reportesRoutes from "./reportes.routes.js";
-import authRoutes from "./routes/auth.routes.js";
+import authRoutes from "./auth.routes.js";
 
 
 const router = express.Router();
