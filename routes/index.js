@@ -7,6 +7,7 @@ import asistenciasRoutes from "./asistencias.routes.js"; // 👈 nueva
 import registroMaquinariaRoutes from "./registro_maquinaria.routes.js";
 import documentosTrabajadorRoutes from "./documentos_trabajador.routes.js";
 import reportesRoutes from "./reportes.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.use("/asistencias", asistenciasRoutes); // 👈 nueva
 router.use("/registro_maquinaria", registroMaquinariaRoutes);
 router.use("/documentos_trabajador", documentosTrabajadorRoutes);
 router.use("/reportes", reportesRoutes);
+app.use("/api/auth", authRoutes);
 
 
 export default router;
