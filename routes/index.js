@@ -24,6 +24,6 @@ router.use("/asistencias", asistenciasRoutes); // 👈 nueva
 router.use("/registro_maquinaria", registroMaquinariaRoutes);
 router.use("/documentos_trabajador", documentosTrabajadorRoutes);
 router.use("/reportes", reportesRoutes);
-
+router.use("/auth", authRoutes);
 
 export default router;
