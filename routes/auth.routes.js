@@ -22,8 +22,20 @@ router.post("/login", async (req, res) => {
   try {
     // Buscamos por username (puedes cambiarlo a email si prefieres)
     const [rows] = await connection.query(
-      "SELECT id, username, email, password, id_rol, estado FROM usuarios WHERE username = ? LIMIT 1",
-      [username]
+  `SELECT 
+      u.id,
+      u.username,
+      u.email,
+      u.password,
+      u.id_rol,
+      u.estado,
+      r.nombre       AS rol_nombre,
+      r.descripcion  AS rol_descripcion
+    FROM usuarios u
+    LEFT JOIN roles r ON u.id_rol = r.id
+    WHERE u.username = ?
+    LIMIT 1`,
+  [username]
     );
 
     if (rows.length === 0) {
@@ -58,12 +70,15 @@ router.post("/login", async (req, res) => {
 
     // Si todo bien, devolvemos datos básicos del usuario
     res.json({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      id_rol: user.id_rol,
-      estado: user.estado,
-    });
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  id_rol: user.id_rol,
+  estado: user.estado,
+  rol_nombre: user.rol_nombre,
+  rol_descripcion: user.rol_descripcion,
+  });
+
   } catch (error) {
     console.error("Error en login:", error);
     res.status(500).json({ error: "Error al procesar el login" });
