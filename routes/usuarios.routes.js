@@ -6,6 +6,10 @@ import bcrypt from "bcrypt";
 const router = express.Router();
 const SALT_ROUNDS = 10;
 
+// 🔹 Helper para detectar si un valor ya es un hash bcrypt
+const isBcryptHash = (value) =>
+  typeof value === "string" && value.startsWith("$2") && value.length >= 50;
+
 // ✅ Obtener todos los usuarios
 router.get("/", async (req, res) => {
   try {
@@ -58,10 +62,11 @@ router.put("/:id", async (req, res) => {
   try {
     let { username, email, password, id_rol, estado } = req.body;
 
-    // Si el frontend manda una contraseña vacía o null,
-    // podrías decidir NO cambiarla. Por ahora asumimos que
-    // siempre viene una contraseña válida y la ciframos.
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    // ⛑ Evitar volver a cifrar si el password YA es un hash bcrypt
+    let hashedPassword = password;
+    if (password && !isBcryptHash(password)) {
+      hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    }
 
     await connection.query(
       "UPDATE usuarios SET username=?, email=?, password=?, id_rol=?, estado=? WHERE id=?",
