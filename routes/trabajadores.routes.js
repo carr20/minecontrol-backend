@@ -46,13 +46,16 @@ router.post("/", async (req, res) => {
     );
 
     // 📝 AUDITORÍA (no afecta la respuesta aunque falle)
-    registrarAuditoria(
-      req,
-      "trabajadores",
-      "CREAR",
-      result.insertId || null,
-      `Se creó trabajador DNI ${dni || ""}`
-    );
+    try {
+      registrarAuditoria(req, {
+        modulo: "trabajadores",
+        accion: "CREAR",
+        registroAfectadoId: result.insertId || null,
+        descripcion: `Se creó trabajador DNI ${dni || ""}`,
+      });
+    } catch (e) {
+      console.error("Error registrando auditoría (crear trabajador):", e);
+    }
 
     res.status(201).json({ message: "✅ Trabajador agregado correctamente", id: result.insertId });
   } catch (error) {
@@ -77,13 +80,16 @@ router.put("/:id", async (req, res) => {
     }
 
     // 📝 AUDITORÍA
-    registrarAuditoria(
-      req,
-      "trabajadores",
-      "ACTUALIZAR",
-      Number(id),
-      `Se actualizó trabajador DNI ${dni || ""}`
-    );
+    try {
+      registrarAuditoria(req, {
+        modulo: "trabajadores",
+        accion: "ACTUALIZAR",
+        registroAfectadoId: Number(id),
+        descripcion: `Se actualizó trabajador DNI ${dni || ""}`,
+      });
+    } catch (e) {
+      console.error("Error registrando auditoría (actualizar trabajador):", e);
+    }
 
     res.json({ message: "✅ Trabajador actualizado correctamente" });
   } catch (error) {
@@ -104,13 +110,16 @@ router.delete("/:id", async (req, res) => {
     }
 
     // 📝 AUDITORÍA
-    registrarAuditoria(
-      req,
-      "trabajadores",
-      "ELIMINAR",
-      Number(id),
-      `Se eliminó trabajador con ID ${id}`
-    );
+    try {
+      registrarAuditoria(req, {
+        modulo: "trabajadores",
+        accion: "ELIMINAR",
+        registroAfectadoId: Number(id),
+        descripcion: `Se eliminó trabajador con ID ${id}`,
+      });
+    } catch (e) {
+      console.error("Error registrando auditoría (eliminar trabajador):", e);
+    }
 
     res.json({ message: "🗑️ Trabajador eliminado correctamente" });
   } catch (error) {
@@ -121,3 +130,4 @@ router.delete("/:id", async (req, res) => {
 
 
 export default router;
+
