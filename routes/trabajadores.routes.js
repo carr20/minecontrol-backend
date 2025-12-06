@@ -1,6 +1,9 @@
 import express from "express";
 import connection from "../config/db.js";
 
+// ⭐ NUEVO: helper de auditoría (solo se agrega, no rompe nada)
+import { registrarAuditoria } from "../helpers/auditoria.helper.js";
+
 const router = express.Router();
 
 
@@ -41,6 +44,19 @@ router.post("/", async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [nombres, apellidos, dni, cargo, area, telefono, direccion, fecha_ingreso, estado]
     );
+
+    // 📝 AUDITORÍA (no afecta la respuesta aunque falle)
+    try {
+      registrarAuditoria(req, {
+        modulo: "trabajadores",
+        accion: "CREAR",
+        registroAfectadoId: result.insertId || null,
+        descripcion: `Se creó trabajador DNI ${dni || ""}`,
+      });
+    } catch (e) {
+      console.error("Error registrando auditoría (crear trabajador):", e);
+    }
+
     res.status(201).json({ message: "✅ Trabajador agregado correctamente", id: result.insertId });
   } catch (error) {
     console.error("❌ Error al agregar trabajador:", error);
@@ -63,6 +79,18 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Trabajador no encontrado" });
     }
 
+    // 📝 AUDITORÍA
+    try {
+      registrarAuditoria(req, {
+        modulo: "trabajadores",
+        accion: "ACTUALIZAR",
+        registroAfectadoId: Number(id),
+        descripcion: `Se actualizó trabajador DNI ${dni || ""}`,
+      });
+    } catch (e) {
+      console.error("Error registrando auditoría (actualizar trabajador):", e);
+    }
+
     res.json({ message: "✅ Trabajador actualizado correctamente" });
   } catch (error) {
     console.error("❌ Error al actualizar trabajador:", error);
@@ -81,6 +109,18 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "Trabajador no encontrado" });
     }
 
+    // 📝 AUDITORÍA
+    try {
+      registrarAuditoria(req, {
+        modulo: "trabajadores",
+        accion: "ELIMINAR",
+        registroAfectadoId: Number(id),
+        descripcion: `Se eliminó trabajador con ID ${id}`,
+      });
+    } catch (e) {
+      console.error("Error registrando auditoría (eliminar trabajador):", e);
+    }
+
     res.json({ message: "🗑️ Trabajador eliminado correctamente" });
   } catch (error) {
     console.error("❌ Error al eliminar trabajador:", error);
@@ -90,3 +130,4 @@ router.delete("/:id", async (req, res) => {
 
 
 export default router;
+
